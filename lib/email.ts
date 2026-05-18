@@ -254,7 +254,7 @@ export async function sendCustomerConfirmationEmail({
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'Happy Cheese <onboarding@resend.dev>',
+      from: process.env.RESEND_FROM_EMAIL || 'Happy Cheese <onboarding@resend.dev>',
       to,
       subject: `Pedido confirmado #${orderId.slice(0, 8).toUpperCase()} - Happy Cheese`,
       html,
@@ -477,7 +477,7 @@ export async function sendStoreNotificationEmail({
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'Happy Cheese Sistema <onboarding@resend.dev>',
+      from: process.env.RESEND_FROM_EMAIL || 'Happy Cheese Sistema <onboarding@resend.dev>',
       to: storeEmail,
       subject: `Nuevo pedido #${orderId.slice(0, 8).toUpperCase()} - ${storeName}`,
       html,
