@@ -1,0 +1,518 @@
+@import 'tailwindcss';
+@import '../styles/embla.css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: oklch(0.98 0.005 85);
+  --foreground: oklch(0.25 0.02 60);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.25 0.02 60);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.25 0.02 60);
+  --primary: oklch(0.55 0.15 55);
+  --primary-foreground: oklch(0.98 0.005 85);
+  --secondary: oklch(0.95 0.02 85);
+  --secondary-foreground: oklch(0.35 0.03 60);
+  --muted: oklch(0.94 0.015 85);
+  --muted-foreground: oklch(0.5 0.02 60);
+  --accent: oklch(0.7 0.12 75);
+  --accent-foreground: oklch(0.25 0.02 60);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.88 0.02 85);
+  --input: oklch(0.92 0.015 85);
+  --ring: oklch(0.55 0.15 55);
+  --chart-1: oklch(0.55 0.15 55);
+  --chart-2: oklch(0.7 0.12 75);
+  --chart-3: oklch(0.65 0.1 45);
+  --chart-4: oklch(0.75 0.08 90);
+  --chart-5: oklch(0.6 0.05 30);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.97 0.01 85);
+  --sidebar-foreground: oklch(0.25 0.02 60);
+  --sidebar-primary: oklch(0.55 0.15 55);
+  --sidebar-primary-foreground: oklch(0.98 0.005 85);
+  --sidebar-accent: oklch(0.94 0.02 85);
+  --sidebar-accent-foreground: oklch(0.35 0.03 60);
+  --sidebar-border: oklch(0.88 0.02 85);
+  --sidebar-ring: oklch(0.55 0.15 55);
+
+  --cream: oklch(0.97 0.02 90);
+  --caramel: oklch(0.55 0.15 55);
+  --caramel-light: oklch(0.75 0.1 65);
+  --warm-brown: oklch(0.35 0.05 55);
+}
+
+.dark {
+  --background: oklch(0.18 0.02 55);
+  --foreground: oklch(0.95 0.01 85);
+  --card: oklch(0.22 0.02 55);
+  --card-foreground: oklch(0.95 0.01 85);
+  --popover: oklch(0.22 0.02 55);
+  --popover-foreground: oklch(0.95 0.01 85);
+  --primary: oklch(0.7 0.12 65);
+  --primary-foreground: oklch(0.18 0.02 55);
+  --secondary: oklch(0.28 0.02 55);
+  --secondary-foreground: oklch(0.92 0.01 85);
+  --muted: oklch(0.28 0.02 55);
+  --muted-foreground: oklch(0.7 0.02 85);
+  --accent: oklch(0.65 0.1 75);
+  --accent-foreground: oklch(0.18 0.02 55);
+  --destructive: oklch(0.5 0.2 25);
+  --destructive-foreground: oklch(0.95 0 0);
+  --border: oklch(0.32 0.02 55);
+  --input: oklch(0.28 0.02 55);
+  --ring: oklch(0.7 0.12 65);
+  --chart-1: oklch(0.7 0.12 65);
+  --chart-2: oklch(0.65 0.1 75);
+  --chart-3: oklch(0.6 0.08 45);
+  --chart-4: oklch(0.7 0.06 90);
+  --chart-5: oklch(0.55 0.04 30);
+  --sidebar: oklch(0.2 0.02 55);
+  --sidebar-foreground: oklch(0.95 0.01 85);
+  --sidebar-primary: oklch(0.7 0.12 65);
+  --sidebar-primary-foreground: oklch(0.18 0.02 55);
+  --sidebar-accent: oklch(0.28 0.02 55);
+  --sidebar-accent-foreground: oklch(0.92 0.01 85);
+  --sidebar-border: oklch(0.32 0.02 55);
+  --sidebar-ring: oklch(0.7 0.12 65);
+
+  --cream: oklch(0.25 0.02 55);
+  --caramel: oklch(0.7 0.12 65);
+  --caramel-light: oklch(0.6 0.08 65);
+  --warm-brown: oklch(0.85 0.03 85);
+}
+
+@theme inline {
+  --font-sans: 'DM Sans', 'DM Sans Fallback', sans-serif;
+  --font-serif: 'Playfair Display', 'Playfair Display Fallback', serif;
+  --font-bebas: 'Bebas Neue', 'Impact', 'Arial Narrow', sans-serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+
+  --color-cream: var(--cream);
+  --color-caramel: var(--caramel);
+  --color-caramel-light: var(--caramel-light);
+  --color-warm-brown: var(--warm-brown);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.4s ease-out forwards;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+.delay-100 {
+  animation-delay: 100ms;
+}
+
+.delay-200 {
+  animation-delay: 200ms;
+}
+
+.delay-300 {
+  animation-delay: 300ms;
+}
+
+.delay-400 {
+  animation-delay: 400ms;
+}
+
+.delay-500 {
+  animation-delay: 500ms;
+}
+
+/* Tailwind Animate replacements for shadcn components */
+@keyframes enter {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0) scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), var(--tw-enter-scale, 1)) rotate(var(--tw-enter-rotate, 0));
+  }
+}
+
+@keyframes exit {
+  to {
+    opacity: var(--tw-exit-opacity, 1);
+    transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0) scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), var(--tw-exit-scale, 1)) rotate(var(--tw-exit-rotate, 0));
+  }
+}
+
+.animate-in {
+  animation-name: enter;
+  animation-duration: 150ms;
+  --tw-enter-opacity: 0;
+}
+
+.animate-out {
+  animation-name: exit;
+  animation-duration: 150ms;
+  --tw-exit-opacity: 0;
+}
+
+.fade-in-0 {
+  --tw-enter-opacity: 0;
+}
+
+.fade-out-0 {
+  --tw-exit-opacity: 0;
+}
+
+.zoom-in-95 {
+  --tw-enter-scale: .95;
+}
+
+.zoom-out-95 {
+  --tw-exit-scale: .95;
+}
+
+.slide-in-from-top {
+  --tw-enter-translate-y: -100%;
+}
+
+.slide-in-from-bottom {
+  --tw-enter-translate-y: 100%;
+}
+
+.slide-in-from-left {
+  --tw-enter-translate-x: -100%;
+}
+
+.slide-in-from-right {
+  --tw-enter-translate-x: 100%;
+}
+
+.slide-out-to-top {
+  --tw-exit-translate-y: -100%;
+}
+
+.slide-out-to-bottom {
+  --tw-exit-translate-y: 100%;
+}
+
+.slide-out-to-left {
+  --tw-exit-translate-x: -100%;
+}
+
+.slide-out-to-right {
+  --tw-exit-translate-x: 100%;
+}
+
+.slide-in-from-top-2 {
+  --tw-enter-translate-y: -0.5rem;
+}
+
+.slide-in-from-bottom-2 {
+  --tw-enter-translate-y: 0.5rem;
+}
+
+.slide-in-from-left-2 {
+  --tw-enter-translate-x: -0.5rem;
+}
+
+.slide-in-from-right-2 {
+  --tw-enter-translate-x: 0.5rem;
+}
+
+.duration-200 {
+  animation-duration: 200ms;
+}
+
+.duration-300 {
+  animation-duration: 300ms;
+}
+
+.duration-500 {
+  animation-duration: 500ms;
+}
+
+/* 3D Carousel Styles */
+.perspective-\[2000px\] {
+  perspective: 2000px;
+}
+
+.rotate-y-\[10deg\] {
+  transform: rotateY(10deg);
+}
+
+.rotate-y-\[-10deg\] {
+  transform: rotateY(-10deg);
+}
+
+.rotate-y-\[15deg\] {
+  transform: rotateY(15deg);
+}
+
+.rotate-y-\[-15deg\] {
+  transform: rotateY(-15deg);
+}
+
+.rotate-y-0 {
+  transform: rotateY(0deg);
+}
+
+.rotate-y-\[12deg\] {
+  transform: rotateY(12deg);
+}
+
+.rotate-y-\[-12deg\] {
+  transform: rotateY(-12deg);
+}
+
+/* Animaciones profesionales para Sheet y componentes */
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromRightSmall {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Animaciones específicas para Sheet/Dialog de Radix UI */
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%) scale(0.96);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutToRight {
+  from {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateX(100%) scale(0.96);
+    opacity: 0;
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-100%) scale(0.96);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutToLeft {
+  from {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateX(-100%) scale(0.96);
+    opacity: 0;
+  }
+}
+
+@keyframes overlayShow {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlayHide {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+/* Animaciones con data-state para Radix UI */
+[data-slot="sheet-overlay"][data-state="open"] {
+  animation: overlayShow 400ms ease-out forwards;
+}
+
+[data-slot="sheet-overlay"][data-state="closed"] {
+  animation: overlayHide 300ms ease-in forwards;
+}
+
+/* Sheet content - Right side */
+[data-slot="sheet-content"][data-side="right"][data-state="open"] {
+  animation: slideInFromRight 500ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+[data-slot="sheet-content"][data-side="right"][data-state="closed"] {
+  animation: slideOutToRight 400ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+/* Sheet content - Left side */
+[data-slot="sheet-content"][data-side="left"][data-state="open"] {
+  animation: slideInFromLeft 500ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+[data-slot="sheet-content"][data-side="left"][data-state="closed"] {
+  animation: slideOutToLeft 400ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}

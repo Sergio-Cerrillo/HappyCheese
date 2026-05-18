@@ -1,0 +1,17 @@
+{
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  },
+  "buildCommand": "pnpm build",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "regions": ["fra1"],
+  "functions": {
+    "app/api/**/*": {
+      "maxDuration": 60
+    }
+  },
+  "crons": []
+}
