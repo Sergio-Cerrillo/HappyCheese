@@ -188,20 +188,7 @@ export default function LoginPage() {
                 </Link>
               </div>
 
-              <div
-                className="
-                  mt-8 rounded-2xl border border-[rgba(56,56,54,0.08)]
-                  bg-[rgba(56,56,54,0.04)] px-4 py-4
-                "
-              >
-                <p className="text-center text-xs leading-relaxed text-[rgba(56,56,54,0.62)]">
-                  <span className="font-medium text-[rgb(56,56,54)]">
-                    Credenciales de prueba:
-                  </span>
-                  <br />
-                  Usuario: admin · Contraseña: admin123
-                </p>
-              </div>
+
             </div>
           </section>
         </div>
