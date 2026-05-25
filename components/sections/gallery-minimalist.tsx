@@ -67,17 +67,20 @@ function StaggeredGallery({ items }: BusinessGalleryProps) {
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
-                    const index = Number(entry.target.getAttribute("data-index"))
-
-                    setVisibleMap((prev) => ({
-                        ...prev,
-                        [index]: entry.isIntersecting,
-                    }))
+                    // Solo animar una vez cuando se hace visible
+                    if (entry.isIntersecting) {
+                        const index = Number(entry.target.getAttribute("data-index"))
+                        
+                        setVisibleMap((prev) => ({
+                            ...prev,
+                            [index]: true,
+                        }))
+                    }
                 })
             },
             {
-                threshold: 0.15,
-                rootMargin: "0px 0px -10% 0px",
+                threshold: 0.1,
+                rootMargin: "0px 0px -50px 0px",
             }
         )
 
@@ -112,15 +115,12 @@ function StaggeredGallery({ items }: BusinessGalleryProps) {
                                         style={{
                                             opacity: isVisible ? 1 : 0,
                                             transform: isVisible
-                                                ? "translateY(0px) scale(1)"
-                                                : "translateY(80px) scale(0.96)",
-                                            filter: isVisible ? "blur(0px)" : "blur(8px)",
+                                                ? "translateY(0px)"
+                                                : "translateY(60px)",
                                             transition: `
-                                                opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1) ${cardIndex * 0.08}s,
-                                                transform 0.9s cubic-bezier(0.16, 1, 0.3, 1) ${cardIndex * 0.08}s,
-                                                filter 0.9s cubic-bezier(0.16, 1, 0.3, 1) ${cardIndex * 0.08}s
+                                                opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${cardIndex * 0.1}s,
+                                                transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) ${cardIndex * 0.1}s
                                             `,
-                                            willChange: "transform, opacity, filter",
                                         }}
                                         className={`group relative overflow-hidden rounded-lg cursor-pointer ${isLarge ? "lg:col-span-2" : "lg:col-span-1"
                                             } ${!isEvenRow && itemIndex === 1 ? "lg:order-2" : ""
