@@ -86,7 +86,7 @@ export function StoresSection() {
           >
             <div className="relative h-64 overflow-hidden">
               <Image
-                src="/alcover.jpg"
+                src="/alcover.JPG"
                 alt="Tienda HappyCheese"
                 fill
                 className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
