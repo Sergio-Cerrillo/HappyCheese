@@ -57,7 +57,7 @@ export function Footer() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="font-arial uppercase text-xl font-semibold text-white">HappyCheese</h3>
+            <h3 className="font-arial uppercase text-xl font-semibold text-white">Happycheese</h3>
             <div className="space-y-3 text-white/70">
               <p className="flex items-start gap-2">
                 <MapPin className="h-5 w-5 mt-0.5 flex-shrink-0" />
@@ -72,7 +72,7 @@ export function Footer() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="font-arial uppercase text-xl font-semibold text-white">HappyCheese LUX</h3>
+            <h3 className="font-arial uppercase text-xl font-semibold text-white">Happycheese LUX</h3>
             <div className="space-y-3 text-white/70">
               <p className="flex items-start gap-2">
                 <MapPin className="h-5 w-5 mt-0.5 flex-shrink-0" />
@@ -89,7 +89,7 @@ export function Footer() {
 
         <div className="border-t border-white/20 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-white/60 text-sm">
-            {new Date().getFullYear()} HappyCheese & HappyCheese LUX. Todos los derechos reservados.
+            {new Date().getFullYear()} Happycheese & Happycheese LUX. Todos los derechos reservados.
           </p>
           <div className="flex gap-6 text-sm text-white/60">
             <Link href="/privacidad" className="hover:text-white transition-colors">

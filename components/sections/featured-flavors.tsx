@@ -134,7 +134,7 @@ export function FeaturedFlavors({ flavors = defaultFlavors }: FeaturedFlavorsPro
                                     transition: 'opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s'
                                 }}
                             >
-                                Solo en HappyCheese LUX
+                                Solo en Happycheese LUX
                             </p>
                             <h2
                                 className="font-bebas text-4xl md:text-5xl lg:text-6xl font-light text-white mb-4"
@@ -313,7 +313,7 @@ export function FeaturedFlavors({ flavors = defaultFlavors }: FeaturedFlavorsPro
                                                 w-full sm:w-auto
                                             "
                                         >
-                                            Ordenar Ahora
+                                            Hacer pedido
                                         </Button>
                                     </div>
 
