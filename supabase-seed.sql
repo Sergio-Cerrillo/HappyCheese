@@ -3,7 +3,7 @@ INSERT INTO happycheese.stores (id, name, address, phone, hours, coordinates, ac
 VALUES 
   (
     'happycheese',
-    'HappyCheese',
+    'Happycheese',
     'Carrer de Sant Magí, 45, 07013 Palma',
     '+34 871 234 567',
     'Lun-Sáb: 10:00 - 20:00 | Dom: 11:00 - 15:00',
@@ -14,7 +14,7 @@ VALUES
   ),
   (
     'happycheese-lux',
-    'HappyCheese LUX',
+    'Happycheese Lux',
     'Carrer de la Unió, 12, 07001 Palma',
     '+34 871 234 568',
     'Lun-Sáb: 09:30 - 20:30 | Dom: 10:00 - 14:00',
