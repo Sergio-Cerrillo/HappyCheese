@@ -13,7 +13,7 @@ export default function StoresPage() {
         <>
             <Header />
             <main className="pt-24">
-                <StoresSection />
+                <StoresSection forceVisible />
             </main>
             <Footer />
         </>

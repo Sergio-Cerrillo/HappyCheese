@@ -15,7 +15,11 @@ import { cn } from "@/lib/utils"
 
 const navLinks = [
   { href: "/nosotros", label: "Nosotros" },
-  { href: "/nosotros#preguntas-frecuentes", label: "Preguntas frecuentes" },
+  {
+    href: "/nosotros#preguntas-frecuentes",
+    label: "Preguntas frecuentes",
+    desktopLabel: "FAQ",
+  },
   { href: "/sabores", label: "Sabores" },
   { href: "/tiendas", label: "Tiendas" },
 ]
@@ -72,14 +76,14 @@ export function Header() {
               <div className="grid h-full grid-cols-3 items-center">
                 {/* LEFT */}
                 <div className="flex items-center justify-start">
-                  <nav className="hidden md:flex items-center gap-8 lg:gap-10">
+                  <nav className="hidden md:flex items-center gap-6 lg:gap-8">
                     {navLinks.map((link) => (
                       <Link
                         key={link.href}
                         href={link.href}
                         className="text-[11px] uppercase tracking-[0.22em] text-white/78 transition-colors duration-300 hover:text-white"
                       >
-                        {link.label}
+                        {link.desktopLabel ?? link.label}
                       </Link>
                     ))}
                   </nav>

@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button'
 import { MapPin, Clock, Phone, Navigation } from 'lucide-react'
 import type { Store } from '@/lib/types'
 
-export function StoresSection() {
+export function StoresSection({ forceVisible = false }: { forceVisible?: boolean } = {}) {
   const [stores, setStores] = useState<Store[]>([])
-  const [isVisible, setIsVisible] = useState(false)
+  const [isVisible, setIsVisible] = useState(forceVisible)
   const sectionRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
+    if (forceVisible) return
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -27,7 +29,7 @@ export function StoresSection() {
     }
 
     return () => observer.disconnect()
-  }, [])
+  }, [forceVisible])
 
   useEffect(() => {
     fetchStores()

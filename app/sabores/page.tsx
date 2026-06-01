@@ -264,6 +264,7 @@ export default function FlavorsPage() {
     const [flavorsHappyCheeseLux, setFlavorsHappyCheeseLux] = useState<Flavor[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [mounted, setMounted] = useState(false)
+    const [isMobile, setIsMobile] = useState(false)
     const [scrollY, setScrollY] = useState(0)
 
     useEffect(() => {
@@ -278,6 +279,13 @@ export default function FlavorsPage() {
 
         window.addEventListener("scroll", handleScroll, { passive: true })
         return () => window.removeEventListener("scroll", handleScroll)
+    }, [])
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768)
+        checkMobile()
+        window.addEventListener("resize", checkMobile)
+        return () => window.removeEventListener("resize", checkMobile)
     }, [])
 
     useEffect(() => {
@@ -314,7 +322,7 @@ export default function FlavorsPage() {
     }
 
     const maxScroll = 350
-    const scrollProgress = Math.min(scrollY / maxScroll, 1)
+    const scrollProgress = isMobile ? 0 : Math.min(scrollY / maxScroll, 1)
     const contentOpacity = 1 - scrollProgress
     const contentTranslateY = -(scrollProgress * 200)
     const contentScale = 1 - scrollProgress * 0.15
@@ -324,8 +332,8 @@ export default function FlavorsPage() {
         <>
             <Header />
             <main className="bg-[linear-gradient(180deg,#ffffff_0%,#f7f7f6_100%)]">
-                <section className="relative flex h-screen items-center justify-center overflow-hidden">
-                    <div className="absolute inset-0 -mt-40">
+                <section className="relative flex min-h-[90svh] items-center justify-center overflow-hidden bg-[rgb(56,56,54)] md:h-screen">
+                    <div className="absolute inset-0 md:-mt-40">
                         <Image
                             src="/hc/12.jpeg"
                             alt="Sabores de cheesecake"
@@ -337,7 +345,7 @@ export default function FlavorsPage() {
                     </div>
 
                     <div
-                        className="relative z-10 mx-auto mt-20 max-w-4xl px-4 text-center"
+                        className="relative z-10 mx-auto mt-14 max-w-4xl px-4 text-center md:mt-20"
                         style={{
                             opacity: contentOpacity,
                             transform: `translateY(${contentTranslateY}px) scale(${contentScale})`,
