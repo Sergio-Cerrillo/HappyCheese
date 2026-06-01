@@ -19,11 +19,14 @@ function useInView<T extends HTMLElement>() {
 
         const observer = new IntersectionObserver(
             ([entry]) => {
-                setVisible(entry.isIntersecting)
+                if (entry.isIntersecting) {
+                    setVisible(true)
+                    observer.unobserve(entry.target)
+                }
             },
             {
-                threshold: 0.12,
-                rootMargin: "0px 0px -8% 0px",
+                threshold: 0.05,
+                rootMargin: "0px 0px -2% 0px",
             }
         )
 
@@ -263,13 +266,20 @@ export default function FlavorsPage() {
     const [flavorsHappyCheese, setFlavorsHappyCheese] = useState<Flavor[]>([])
     const [flavorsHappyCheeseLux, setFlavorsHappyCheeseLux] = useState<Flavor[]>([])
     const [isLoading, setIsLoading] = useState(true)
-    const [mounted, setMounted] = useState(false)
     const [isMobile, setIsMobile] = useState(false)
     const [scrollY, setScrollY] = useState(0)
 
     useEffect(() => {
-        setMounted(true)
+        if (typeof history !== "undefined" && "scrollRestoration" in history) {
+            history.scrollRestoration = "manual"
+        }
         window.scrollTo({ top: 0, behavior: "auto" })
+
+        return () => {
+            if (typeof history !== "undefined" && "scrollRestoration" in history) {
+                history.scrollRestoration = "auto"
+            }
+        }
     }, [])
 
     useEffect(() => {
@@ -355,15 +365,13 @@ export default function FlavorsPage() {
                         }}
                     >
                         <p
-                            className={`mb-6 text-sm uppercase tracking-[0.3em] text-white/70 transition-all duration-1000 ${mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-                                }`}
+                            className="mb-6 text-sm uppercase tracking-[0.3em] text-white/70"
                         >
                             Sabores
                         </p>
 
                         <h1
-                            className={`font-bebas text-7xl font-normal uppercase leading-[0.85] tracking-tight text-white transition-all duration-1000 delay-200 md:text-9xl lg:text-[8rem] ${mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-                                }`}
+                            className="font-bebas text-7xl font-normal uppercase leading-[0.85] tracking-tight text-white md:text-9xl lg:text-[8rem]"
                             style={{
                                 letterSpacing: "-0.02em",
                             }}
@@ -372,8 +380,7 @@ export default function FlavorsPage() {
                         </h1>
 
                         <p
-                            className={`mt-8 text-lg font-light text-white/80 transition-all duration-1000 delay-400 md:text-xl ${mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-                                }`}
+                            className="mt-8 text-lg font-light text-white/80 md:text-xl"
                         >
                             Desde las recetas más clásicas hasta combinaciones sorprendentes.
                         </p>
@@ -385,8 +392,7 @@ export default function FlavorsPage() {
                                 .getElementById("sabores-lista")
                                 ?.scrollIntoView({ behavior: "smooth" })
                         }}
-                        className={`group absolute bottom-12 left-1/2 flex -translate-x-1/2 cursor-pointer flex-col items-center gap-3 transition-all duration-1000 delay-700 ${mounted ? "opacity-100" : "opacity-0"
-                            }`}
+                        className="group absolute bottom-12 left-1/2 flex -translate-x-1/2 cursor-pointer flex-col items-center gap-3"
                         aria-label="Scroll para ver sabores"
                     >
                         <span className="text-xs uppercase tracking-[0.2em] text-white/70 transition-colors group-hover:text-white">
@@ -396,7 +402,7 @@ export default function FlavorsPage() {
                     </button>
                 </section>
 
-                <section id="sabores-lista" className="mt-20 pb-28">
+                <section id="sabores-lista" className="pt-14 pb-28 md:pt-20">
                     <div className="container mx-auto px-4">
                         {isLoading ? (
                             <div className="space-y-12">

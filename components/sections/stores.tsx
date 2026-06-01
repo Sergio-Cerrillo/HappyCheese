@@ -7,7 +7,13 @@ import { Button } from '@/components/ui/button'
 import { MapPin, Clock, Phone, Navigation } from 'lucide-react'
 import type { Store } from '@/lib/types'
 
-export function StoresSection({ forceVisible = false }: { forceVisible?: boolean } = {}) {
+export function StoresSection({
+  forceVisible = false,
+  compactTop = false,
+}: {
+  forceVisible?: boolean
+  compactTop?: boolean
+} = {}) {
   const [stores, setStores] = useState<Store[]>([])
   const [isVisible, setIsVisible] = useState(forceVisible)
   const sectionRef = useRef<HTMLElement>(null)
@@ -48,10 +54,14 @@ export function StoresSection({ forceVisible = false }: { forceVisible?: boolean
   }
 
   return (
-    <section id="tiendas" ref={sectionRef} className="py-24 bg-white">
+    <section
+      id="tiendas"
+      ref={sectionRef}
+      className={`${compactTop ? 'pt-10 pb-24 md:pt-14' : 'py-24'} bg-white`}
+    >
       <div className="container mx-auto px-4">
         <div
-          className="text-center max-w-2xl mx-auto mb-16"
+          className={`${compactTop ? 'mb-12 md:mb-14' : 'mb-16'} text-center max-w-2xl mx-auto`}
           style={{
             opacity: isVisible ? 1 : 0,
             transform: isVisible ? 'translateY(0)' : 'translateY(50px)',
