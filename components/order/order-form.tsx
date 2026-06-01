@@ -61,12 +61,12 @@ const getFlavorPrice = (
   storeId: string
 ): number => {
   const storeAvailability = flavor.availability.find((a) => a.storeId === storeId)
-  
+
   // Si hay precios personalizados para esta tienda, usarlos
   if (storeAvailability?.prices) {
     return storeAvailability.prices[portion]
   }
-  
+
   // Si no, usar los precios por defecto del sabor
   return flavor.prices[portion]
 }
@@ -224,6 +224,12 @@ export function OrderForm() {
     }
   }
 
+  const scrollToTop = () => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
   const nextStep = () => {
     if (step === 'details') {
       if (!isValidEmail(customerInfo.email)) {
@@ -242,12 +248,16 @@ export function OrderForm() {
     if (step === 'store') setStep('flavors')
     else if (step === 'flavors') setStep('details')
     else if (step === 'details') setStep('confirm')
+
+    scrollToTop()
   }
 
   const prevStep = () => {
     if (step === 'flavors') setStep('store')
     else if (step === 'details') setStep('flavors')
     else if (step === 'confirm') setStep('details')
+
+    scrollToTop()
   }
 
   const handleSubmitOrder = async () => {

@@ -301,7 +301,7 @@ export default function AboutSection() {
             </section>
 
             {/* FAQ SECTION */}
-            <section className="py-24 bg-card">
+            <section id="preguntas-frecuentes" className="py-24 bg-card">
                 <div className="container mx-auto px-4">
                     <div className="max-w-4xl mx-auto">
                         {/* Glass Card Container */}

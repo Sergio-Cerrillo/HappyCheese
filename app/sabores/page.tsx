@@ -268,6 +268,7 @@ export default function FlavorsPage() {
 
     useEffect(() => {
         setMounted(true)
+        window.scrollTo({ top: 0, behavior: "auto" })
     }, [])
 
     useEffect(() => {

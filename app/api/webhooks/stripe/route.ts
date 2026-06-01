@@ -122,9 +122,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
   console.log('Order updated successfully:', orderId)
 
-  // Enviar emails de confirmación
+  // Enviar emails de confirmación (de forma independiente)
   try {
-    // Email al cliente
     await sendCustomerConfirmationEmail({
       to: order.customerEmail,
       customerName: order.customerName,
@@ -136,10 +135,12 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       pickupDate: order.pickupDate,
       pickupTime: order.pickupTime,
     })
-
     console.log('Customer confirmation email sent')
+  } catch (emailError) {
+    console.error('Error sending customer email:', emailError)
+  }
 
-    // Email a la tienda
+  try {
     await sendStoreNotificationEmail({
       storeId: order.storeId,
       storeName: order.storeName,
@@ -153,11 +154,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       pickupTime: order.pickupTime,
       notes: order.notes,
     })
-
     console.log('Store notification email sent')
   } catch (emailError) {
-    console.error('Error sending emails:', emailError)
-    // No lanzamos error aquí porque el pedido ya está procesado
-    // Solo registramos el error para revisarlo manualmente
+    console.error('Error sending store email:', emailError)
   }
 }

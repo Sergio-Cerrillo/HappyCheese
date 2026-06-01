@@ -1,10 +1,17 @@
 import { Resend } from 'resend'
 
-if (!process.env.RESEND_API_KEY) {
-  throw new Error('RESEND_API_KEY is not set in environment variables')
-}
+let resendClient: Resend | null = null
 
-export const resend = new Resend(process.env.RESEND_API_KEY)
+function getResendClient(): Resend {
+  if (resendClient) return resendClient
+
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY is not set in environment variables')
+  }
+
+  resendClient = new Resend(process.env.RESEND_API_KEY)
+  return resendClient
+}
 
 /**
  * Obtiene el email de la tienda basado en su ID
@@ -92,6 +99,10 @@ export async function sendCustomerConfirmationEmail({
   pickupDate: string
   pickupTime: string
 }) {
+  if (!to?.trim()) {
+    throw new Error('Customer email recipient is missing')
+  }
+
   const storeEmail = getStoreEmail(storeId)
 
   const formattedDate = new Date(pickupDate + 'T' + pickupTime).toLocaleDateString(
@@ -253,6 +264,7 @@ export async function sendCustomerConfirmationEmail({
   `
 
   try {
+    const resend = getResendClient()
     const { data, error } = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'Happy Cheese <onboarding@resend.dev>',
       to,
@@ -301,6 +313,10 @@ export async function sendStoreNotificationEmail({
   notes?: string
 }) {
   const storeEmail = getStoreEmail(storeId)
+
+  if (!storeEmail?.trim()) {
+    throw new Error(`Store email recipient is missing for storeId: ${storeId}`)
+  }
 
   const formattedDate = new Date(pickupDate + 'T' + pickupTime).toLocaleDateString(
     'es-ES',
@@ -476,6 +492,7 @@ export async function sendStoreNotificationEmail({
   `
 
   try {
+    const resend = getResendClient()
     const { data, error } = await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'Happy Cheese Sistema <onboarding@resend.dev>',
       to: storeEmail,

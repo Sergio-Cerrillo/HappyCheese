@@ -44,10 +44,13 @@ export function Footer() {
               <Link href="/nosotros" className="text-white/70 hover:text-white transition-colors">
                 Nosotros
               </Link>
+              <Link href="/nosotros#preguntas-frecuentes" className="text-white/70 hover:text-white transition-colors">
+                Preguntas frecuentes
+              </Link>
               <Link href="/sabores" className="text-white/70 hover:text-white transition-colors">
                 Sabores
               </Link>
-              <Link href="/#tiendas" className="text-white/70 hover:text-white transition-colors">
+              <Link href="/tiendas" className="text-white/70 hover:text-white transition-colors">
                 Tiendas
               </Link>
               <Link href="/pedido" className="text-white/70 hover:text-white transition-colors">
