@@ -15,13 +15,13 @@ import { cn } from "@/lib/utils"
 
 const navLinks = [
   { href: "/nosotros", label: "Nosotros" },
+  { href: "/sabores", label: "Sabores" },
+  { href: "/tiendas", label: "Tiendas" },
   {
     href: "/nosotros#preguntas-frecuentes",
     label: "Preguntas frecuentes",
     desktopLabel: "FAQ",
   },
-  { href: "/sabores", label: "Sabores" },
-  { href: "/tiendas", label: "Tiendas" },
 ]
 
 export function Header() {
