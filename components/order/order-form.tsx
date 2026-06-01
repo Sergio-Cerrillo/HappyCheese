@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -88,6 +88,7 @@ const sectionTitleClass =
 
 export function OrderForm() {
   const router = useRouter()
+  const formTopRef = useRef<HTMLDivElement>(null)
   const [step, setStep] = useState<Step>('store')
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
@@ -111,6 +112,16 @@ export function OrderForm() {
   useEffect(() => {
     loadData()
   }, [])
+
+  useEffect(() => {
+    // Ejecutar el scroll cuando el nuevo paso ya está renderizado
+    requestAnimationFrame(() => {
+      formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    })
+  }, [step])
 
   async function loadData() {
     try {
@@ -224,12 +235,6 @@ export function OrderForm() {
     }
   }
 
-  const scrollToTop = () => {
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    }
-  }
-
   const nextStep = () => {
     if (step === 'details') {
       if (!isValidEmail(customerInfo.email)) {
@@ -249,7 +254,6 @@ export function OrderForm() {
     else if (step === 'flavors') setStep('details')
     else if (step === 'details') setStep('confirm')
 
-    scrollToTop()
   }
 
   const prevStep = () => {
@@ -257,7 +261,6 @@ export function OrderForm() {
     else if (step === 'details') setStep('flavors')
     else if (step === 'confirm') setStep('details')
 
-    scrollToTop()
   }
 
   const handleSubmitOrder = async () => {
@@ -330,6 +333,7 @@ export function OrderForm() {
 
   return (
     <div className="space-y-8">
+      <div ref={formTopRef} />
       {/* Progress */}
       <div className={`${shellCardClass} px-5 py-6 md:px-8`}>
         <div className="flex items-center justify-center gap-2 md:gap-4">
