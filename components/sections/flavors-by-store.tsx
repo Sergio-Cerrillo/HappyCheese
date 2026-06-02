@@ -129,7 +129,7 @@ export function FlavorsByStore() {
       "
                                 >
                                     <MapPin className="w-4 h-4 mr-2" />
-                                    HappyCheese
+                                    Happycheese
                                 </TabsTrigger>
 
                                 <TabsTrigger
@@ -149,7 +149,7 @@ export function FlavorsByStore() {
       "
                                 >
                                     <MapPin className="w-4 h-4 mr-2" />
-                                    HappyCheese LUX
+                                    Happycheese LUX
                                 </TabsTrigger>
                             </TabsList>
                         </div>
