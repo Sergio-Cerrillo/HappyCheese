@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { getOrders, createOrder, updateOrder } from '@/lib/db'
+import { getOrders, createOrder, updateOrder, getStoreById } from '@/lib/db'
 import { getSessionById } from '@/lib/db'
-import { isValidPickupDate } from '@/lib/date-utils'
+import { getPickupValidationMessage, isValidPickupDate } from '@/lib/date-utils'
 import { cookies } from 'next/headers'
 
 async function checkAuth(): Promise<boolean> {
@@ -66,10 +66,18 @@ export async function POST(request: Request) {
       )
     }
     
-    // Validar fecha de recogida (48h mínimo, 1 año máximo)
-    if (!isValidPickupDate(data.pickupDate, data.pickupTime)) {
+    const store = await getStoreById(data.storeId)
+    if (!store || !store.active) {
       return NextResponse.json(
-        { error: 'La fecha de recogida debe ser entre 48 horas y 1 año desde ahora' },
+        { error: 'Tienda no disponible' },
+        { status: 400 }
+      )
+    }
+
+    // Validar fecha de recogida con las reglas de la tienda
+    if (!isValidPickupDate(data.pickupDate, data.pickupTime, store)) {
+      return NextResponse.json(
+        { error: getPickupValidationMessage(data.pickupDate, data.pickupTime, store) },
         { status: 400 }
       )
     }

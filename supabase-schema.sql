@@ -8,6 +8,14 @@ CREATE TABLE IF NOT EXISTS happycheese.stores (
   address TEXT NOT NULL,
   phone TEXT NOT NULL,
   hours TEXT NOT NULL,
+  "pickupSettings" JSONB NOT NULL DEFAULT '{
+    "minNoticeHours": 34,
+    "maxAdvanceDays": 365,
+    "pickupStart": "10:00",
+    "pickupEnd": "20:00",
+    "timeSlotIntervalMinutes": 30,
+    "closedDates": []
+  }'::jsonb,
   coordinates JSONB NOT NULL,
   active BOOLEAN DEFAULT true,
   "createdAt" TIMESTAMPTZ DEFAULT now(),

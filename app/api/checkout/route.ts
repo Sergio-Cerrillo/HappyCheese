@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { stripe, formatAmountForStripe } from '@/lib/stripe'
-import { createOrder } from '@/lib/db'
-import { isValidPickupDate } from '@/lib/date-utils'
+import { createOrder, getStoreById } from '@/lib/db'
+import { getPickupValidationMessage, isValidPickupDate } from '@/lib/date-utils'
 
 const PORTION_LABELS: Record<string, string> = {
   individual: 'Individual',
@@ -43,10 +43,18 @@ export async function POST(request: Request) {
       )
     }
 
-    // Validar fecha de recogida
-    if (!isValidPickupDate(data.pickupDate, data.pickupTime)) {
+    const store = await getStoreById(data.storeId)
+    if (!store || !store.active) {
       return NextResponse.json(
-        { error: 'La fecha de recogida debe ser entre 48 horas y 1 año desde ahora' },
+        { error: 'Tienda no disponible' },
+        { status: 400 }
+      )
+    }
+
+    // Validar fecha de recogida con las reglas de la tienda
+    if (!isValidPickupDate(data.pickupDate, data.pickupTime, store)) {
+      return NextResponse.json(
+        { error: getPickupValidationMessage(data.pickupDate, data.pickupTime, store) },
         { status: 400 }
       )
     }

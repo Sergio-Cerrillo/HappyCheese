@@ -13,10 +13,20 @@ export interface Store {
   address: string
   phone: string
   hours: string
+  pickupSettings?: StorePickupSettings | null
   coordinates: { lat: number; lng: number }
   active: boolean
   createdAt: string
   updatedAt: string
+}
+
+export interface StorePickupSettings {
+  minNoticeHours?: number
+  maxAdvanceDays?: number
+  pickupStart?: string
+  pickupEnd?: string
+  timeSlotIntervalMinutes?: number
+  closedDates?: string[]
 }
 
 export interface FlavorAvailability {

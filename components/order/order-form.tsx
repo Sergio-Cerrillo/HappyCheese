@@ -37,6 +37,11 @@ import {
   getMinPickupDate,
   getMaxPickupDate,
   formatDateForInput,
+  getPickupSettings,
+  getPickupTimeOptions,
+  getPickupValidationMessage,
+  isClosedPickupDate,
+  isValidPickupDate,
 } from '@/lib/date-utils'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
@@ -202,6 +207,13 @@ export function OrderForm() {
   }
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const pickupSettings = getPickupSettings(selectedStoreData)
+  const minDate = formatDateForInput(getMinPickupDate(selectedStoreData))
+  const maxDate = formatDateForInput(getMaxPickupDate(selectedStoreData))
+  const pickupTimeOptions = getPickupTimeOptions(
+    selectedStoreData,
+    customerInfo.pickupDate
+  )
 
   function isValidEmail(email: string): boolean {
     // Simple regex for email validation
@@ -227,7 +239,12 @@ export function OrderForm() {
           validEmail &&
           validPhone &&
           customerInfo.pickupDate &&
-          customerInfo.pickupTime
+          customerInfo.pickupTime &&
+          isValidPickupDate(
+            customerInfo.pickupDate,
+            customerInfo.pickupTime,
+            selectedStoreData
+          )
         )
       }
       default:
@@ -243,6 +260,20 @@ export function OrderForm() {
       }
       if (!isValidPhone(customerInfo.phone)) {
         toast.error('Introduce un teléfono válido (9 dígitos)')
+        return
+      }
+      if (!customerInfo.pickupDate || !customerInfo.pickupTime) {
+        toast.error('Selecciona fecha y hora de recogida')
+        return
+      }
+      if (!isValidPickupDate(customerInfo.pickupDate, customerInfo.pickupTime, selectedStoreData)) {
+        toast.error(
+          getPickupValidationMessage(
+            customerInfo.pickupDate,
+            customerInfo.pickupTime,
+            selectedStoreData
+          )
+        )
         return
       }
     }
@@ -274,6 +305,20 @@ export function OrderForm() {
     }
     if (!canProceed()) {
       toast.error('Por favor, completa todos los campos requeridos')
+      return
+    }
+    if (!customerInfo.pickupDate || !customerInfo.pickupTime) {
+      toast.error('Selecciona fecha y hora de recogida')
+      return
+    }
+    if (!isValidPickupDate(customerInfo.pickupDate, customerInfo.pickupTime, selectedStoreData)) {
+      toast.error(
+        getPickupValidationMessage(
+          customerInfo.pickupDate,
+          customerInfo.pickupTime,
+          selectedStoreData
+        )
+      )
       return
     }
 
@@ -319,9 +364,6 @@ export function OrderForm() {
       setProcessing(false)
     }
   }
-
-  const minDate = formatDateForInput(getMinPickupDate())
-  const maxDate = formatDateForInput(getMaxPickupDate())
 
   if (loading) {
     return (
@@ -784,7 +826,10 @@ export function OrderForm() {
             <div className="space-y-4 rounded-[22px] border border-[rgba(56,56,54,0.08)] bg-[rgba(56,56,54,0.03)] p-5">
               <div className="flex items-center gap-2 text-sm text-[rgba(56,56,54,0.58)]">
                 <Calendar className="h-4 w-4" />
-                <span>Recogida (mínimo 48 horas, máximo 1 año)</span>
+                <span>
+                  Recogida ({pickupSettings.minNoticeHours}h de antelación,
+                  horario {pickupSettings.pickupStart}-{pickupSettings.pickupEnd})
+                </span>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -800,49 +845,49 @@ export function OrderForm() {
                       setCustomerInfo((prev) => ({
                         ...prev,
                         pickupDate: e.target.value,
+                        pickupTime: '',
                       }))
                     }
                     required
                     className="rounded-xl border-[rgba(56,56,54,0.1)] bg-white/80"
                   />
+                  {customerInfo.pickupDate &&
+                    isClosedPickupDate(customerInfo.pickupDate, selectedStoreData) && (
+                      <p className="text-sm text-red-600">
+                        Esta tienda no acepta recogidas ese día.
+                      </p>
+                    )}
                 </div>
 
                 <div className="space-y-2">
                   <Label>Hora de recogida*</Label>
                   <div className="grid grid-cols-4 gap-2 md:grid-cols-5 lg:grid-cols-6">
-                    {(() => {
-                      // Determinar rango de horas según tienda
-                      let start = 10, end = 20
-                      if (selectedStoreData?.id === 'lux' || selectedStoreData?.name?.toLowerCase().includes('lux')) {
-                        start = 11; end = 19
-                      }
-                      const hours = []
-                      for (let h = start; h <= end; h++) {
-                        hours.push(h)
-                      }
-                      return hours.map((h) => {
-                        const value = `${h.toString().padStart(2, '0')}:00`
-                        const selected = customerInfo.pickupTime === value
-                        return (
-                          <button
-                            key={value}
-                            type="button"
-                            className={cn(
-                              'rounded-lg border px-3 py-2 text-sm font-medium transition-all',
-                              selected
-                                ? 'bg-[rgb(56,56,54)] text-white border-[rgb(56,56,54)] shadow'
-                                : 'bg-white/80 text-[rgb(56,56,54)] border-[rgba(56,56,54,0.12)] hover:bg-[rgba(56,56,54,0.08)]'
-                            )}
-                            onClick={() =>
-                              setCustomerInfo((prev) => ({ ...prev, pickupTime: value }))
-                            }
-                          >
-                            {value}
-                          </button>
-                        )
-                      })
-                    })()}
+                    {pickupTimeOptions.map((value) => {
+                      const selected = customerInfo.pickupTime === value
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          className={cn(
+                            'rounded-lg border px-3 py-2 text-sm font-medium transition-all',
+                            selected
+                              ? 'bg-[rgb(56,56,54)] text-white border-[rgb(56,56,54)] shadow'
+                              : 'bg-white/80 text-[rgb(56,56,54)] border-[rgba(56,56,54,0.12)] hover:bg-[rgba(56,56,54,0.08)]'
+                          )}
+                          onClick={() =>
+                            setCustomerInfo((prev) => ({ ...prev, pickupTime: value }))
+                          }
+                        >
+                          {value}
+                        </button>
+                      )
+                    })}
                   </div>
+                  {customerInfo.pickupDate && pickupTimeOptions.length === 0 && (
+                    <p className="text-sm text-red-600">
+                      No hay horas disponibles para esa fecha.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
