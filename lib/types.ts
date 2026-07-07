@@ -41,6 +41,7 @@ export interface Flavor {
   description: string
   prices: PortionPrice // Precios por defecto (se usan si no hay precios específicos en availability)
   image: string
+  imageThumb?: string | null
   active: boolean
   availability: FlavorAvailability[]
   createdAt: string

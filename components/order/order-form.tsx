@@ -45,6 +45,7 @@ import {
 } from '@/lib/date-utils'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
+import { getFlavorImageSrc } from '@/lib/image-utils'
 import { Badge } from '@/components/ui/badge'
 
 type Step = 'store' | 'flavors' | 'details' | 'confirm'
@@ -534,10 +535,11 @@ export function OrderForm() {
                         >
                           {/* Image */}
                           <Image
-                            src={flavor.image || '/images/clasica.jpg'}
+                            src={getFlavorImageSrc(flavor, 'thumb')}
                             alt={flavor.name}
                             fill
                             className="object-cover transition-transform duration-500 group-hover:scale-105"
+                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 22vw"
                           />
 
                           {/* Gradient overlay */}
@@ -585,11 +587,12 @@ export function OrderForm() {
                       <DrawerHeader className="pb-0">
                         <div className="mx-auto mb-4 h-32 w-32 overflow-hidden rounded-2xl sm:h-40 sm:w-40">
                           <Image
-                            src={selectedFlavor.image || '/images/clasica.jpg'}
+                            src={getFlavorImageSrc(selectedFlavor, 'thumb')}
                             alt={selectedFlavor.name}
                             width={160}
                             height={160}
                             className="h-full w-full object-cover"
+                            quality={78}
                           />
                         </div>
                         <DrawerTitle className="text-xl">{selectedFlavor.name}</DrawerTitle>

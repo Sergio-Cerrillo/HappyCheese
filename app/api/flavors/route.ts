@@ -66,6 +66,7 @@ export async function POST(request: Request) {
       description: data.description,
       prices: data.prices,
       image: data.image || '/images/clasica.jpg',
+      imageThumb: data.imageThumb || data.image || '/images/clasica.jpg',
       active: data.active ?? true,
       availability: data.availability || []
     })

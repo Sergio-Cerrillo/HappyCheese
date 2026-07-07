@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS happycheese.flavors (
   description TEXT NOT NULL,
   prices JSONB NOT NULL,
   image TEXT NOT NULL,
+  "imageThumb" TEXT,
   active BOOLEAN DEFAULT true,
   availability JSONB NOT NULL,
   "createdAt" TIMESTAMPTZ DEFAULT now(),

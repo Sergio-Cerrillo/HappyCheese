@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Upload, X, ImageIcon, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 
 interface ImageUploadProps {
   value?: string
-  onChange: (url: string) => void
+  onChange: (url: string, metadata?: { thumbUrl?: string }) => void
   className?: string
   disabled?: boolean
 }
@@ -19,6 +19,10 @@ export function ImageUpload({ value, onChange, className, disabled }: ImageUploa
   const [isUploading, setIsUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(value || null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setPreview(value || null)
+  }, [value])
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -30,7 +34,7 @@ export function ImageUpload({ value, onChange, className, disabled }: ImageUploa
     }
   }, [])
 
-  const uploadToSupabase = async (file: File): Promise<string> => {
+  const uploadToSupabase = async (file: File): Promise<{ url: string; thumbUrl?: string }> => {
     const formData = new FormData()
     formData.append('file', file)
 
@@ -53,7 +57,10 @@ export function ImageUpload({ value, onChange, className, disabled }: ImageUploa
       throw new Error('El servidor no devolvió una URL válida')
     }
 
-    return data.url
+    return {
+      url: data.url,
+      thumbUrl: data.thumbUrl
+    }
   }
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
@@ -129,8 +136,8 @@ export function ImageUpload({ value, onChange, className, disabled }: ImageUploa
       reader.readAsDataURL(file)
 
       // Subir a Supabase
-      const url = await uploadToSupabase(file)
-      onChange(url)
+      const upload = await uploadToSupabase(file)
+      onChange(upload.url, { thumbUrl: upload.thumbUrl })
 
       toast.success('Imagen subida correctamente', {
         description: `${file.name} (${sizeMB} MB)`
@@ -157,7 +164,7 @@ export function ImageUpload({ value, onChange, className, disabled }: ImageUploa
 
   const handleRemove = () => {
     setPreview(null)
-    onChange('')
+    onChange('', { thumbUrl: '' })
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }

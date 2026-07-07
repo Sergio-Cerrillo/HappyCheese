@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Pencil, Trash2, Store as StoreIcon, Sparkles } from 'lucide-react'
 import Image from 'next/image'
+import { getFlavorImageSrc } from '@/lib/image-utils'
 import type { Flavor, Store, PortionType } from '@/lib/types'
 
 interface FlavorCardProps {
@@ -68,10 +69,11 @@ export function FlavorCard({
         {/* Imagen */}
         <div className="relative h-44 w-full shrink-0 overflow-hidden rounded-2xl sm:h-36 sm:w-36">
           <Image
-            src={flavor.image || '/images/clasica.jpg'}
+            src={getFlavorImageSrc(flavor, 'thumb')}
             alt={flavor.name}
             fill
             className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+            sizes="(max-width: 640px) 100vw, 144px"
           />
 
           <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.35)] via-transparent to-transparent" />

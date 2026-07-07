@@ -34,3 +34,4 @@ next-env.d.ts
 # database (solo archivos JSON de datos, no configs)
 /data
 /data/*.json
+/migration-output

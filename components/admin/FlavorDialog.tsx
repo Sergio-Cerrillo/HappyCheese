@@ -37,6 +37,7 @@ const INITIAL_FLAVOR: Partial<Flavor> = {
   description: '',
   prices: { individual: 0, doble: 0, mediana: 0, grande: 0 },
   image: '',
+  imageThumb: '',
   active: true,
   availability: [],
 }
@@ -143,8 +144,12 @@ export function FlavorDialog({
                   >
                     <ImageUpload
                       value={formData.image || ''}
-                      onChange={(url) =>
-                        setFormData((prev) => ({ ...prev, image: url }))
+                      onChange={(url, metadata) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          image: url,
+                          imageThumb: metadata?.thumbUrl ?? prev.imageThumb ?? '',
+                        }))
                       }
                     />
                   </div>

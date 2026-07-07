@@ -7,6 +7,7 @@ import { MapPin, ChevronDown } from "lucide-react"
 import { Header } from "@/components/header"
 import type { Flavor } from "@/lib/types"
 import { Footer } from "@/components/footer"
+import { getFlavorImageSrc } from "@/lib/image-utils"
 
 
 function useInView<T extends HTMLElement>() {
@@ -78,10 +79,11 @@ function FlavorCard({ flavor, index }: { flavor: Flavor; index: number }) {
         >
             <div className="relative h-64 overflow-hidden">
                 <Image
-                    src={flavor.image}
+                    src={getFlavorImageSrc(flavor, 'thumb')}
                     alt={flavor.name}
                     fill
                     className="object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                 />
 
                 <div className="absolute inset-0 bg-linear-to-t from-[rgba(0,0,0,0.42)] via-[rgba(0,0,0,0.10)] to-transparent" />

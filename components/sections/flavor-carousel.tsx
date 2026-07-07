@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getFlavorImageSrc } from '@/lib/image-utils'
 import type { Flavor } from '@/lib/types'
 import useEmblaCarousel from 'embla-carousel-react'
 import { EmblaCarouselType, EmblaEventType } from 'embla-carousel'
@@ -174,34 +175,35 @@ export function FlavorCarousel({ flavors, storeName, storeId, reversed = false, 
     <div className={cn('relative overflow-hidden w-full', className)}>
       {/* Background Image con Overlay - Crossfade entre imágenes */}
       <div className="absolute inset-0 z-0">
-        {/* Renderizar TODAS las imágenes, mostrar solo la necesaria con opacity */}
-        {availableFlavors.map((flavor, index) => {
-          const isDisplayed = index === displayedIndex
-          const isTarget = index === currentIndex
-          const shouldBeVisible = isTransitioning ? isTarget : isDisplayed
+        {[displayedFlavor, targetFlavor]
+          .filter((flavor, index, self) => self.findIndex((item) => item.id === flavor.id) === index)
+          .map((flavor) => {
+            const isTarget = flavor.id === targetFlavor.id
+            const shouldBeVisible = isTransitioning ? isTarget : flavor.id === displayedFlavor.id
 
-          return (
-            <div
-              key={`bg-${flavor.id}`}
-              className="absolute inset-0"
-              style={{
-                opacity: shouldBeVisible ? 1 : 0,
-                transition: 'opacity 800ms ease-in-out',
-                zIndex: isTarget ? 2 : 1,
-                pointerEvents: 'none'
-              }}
-            >
-              <Image
-                src={flavor.image || '/images/clasica.jpg'}
-                alt=""
-                fill
-                className="object-cover blur-sm"
-                priority={index === 0}
-                quality={90}
-              />
-            </div>
-          )
-        })}
+            return (
+              <div
+                key={`bg-${flavor.id}`}
+                className="absolute inset-0"
+                style={{
+                  opacity: shouldBeVisible ? 1 : 0,
+                  transition: 'opacity 800ms ease-in-out',
+                  zIndex: isTarget ? 2 : 1,
+                  pointerEvents: 'none'
+                }}
+              >
+                <Image
+                  src={getFlavorImageSrc(flavor, 'full')}
+                  alt=""
+                  fill
+                  className="object-cover blur-sm"
+                  priority={flavor.id === availableFlavors[0]?.id}
+                  quality={82}
+                  sizes="100vw"
+                />
+              </div>
+            )
+          })}
 
         <div
           className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40"
@@ -300,11 +302,13 @@ export function FlavorCarousel({ flavors, storeName, storeId, reversed = false, 
                           <div className="embla__parallax__layer">
                             <Image
                               className="embla__slide__img embla__parallax__img"
-                              src={flavor.image || '/images/clasica.jpg'}
+                              src={getFlavorImageSrc(flavor, 'thumb')}
                               alt={flavor.name}
                               width={600}
                               height={400}
                               priority={flavor.id === targetFlavor.id}
+                              quality={78}
+                              sizes="(max-width: 1024px) 90vw, 45vw"
                             />
                           </div>
                         </div>

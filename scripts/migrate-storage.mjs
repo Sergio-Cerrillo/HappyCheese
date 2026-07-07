@@ -20,14 +20,18 @@ for (const key of requiredEnv) {
 const bucket = process.env.SUPABASE_BUCKET || 'happycheese-images'
 const prefix = (process.env.SUPABASE_BUCKET_PREFIX || '').replace(/^\/+|\/+$/g, '')
 
+function normalizeSupabaseUrl(url) {
+  return url.replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '')
+}
+
 const oldClient = createClient(
-  process.env.OLD_SUPABASE_URL,
+  normalizeSupabaseUrl(process.env.OLD_SUPABASE_URL),
   process.env.OLD_SUPABASE_SERVICE_ROLE_KEY,
   { auth: { autoRefreshToken: false, persistSession: false } }
 )
 
 const newClient = createClient(
-  process.env.NEW_SUPABASE_URL,
+  normalizeSupabaseUrl(process.env.NEW_SUPABASE_URL),
   process.env.NEW_SUPABASE_SERVICE_ROLE_KEY,
   { auth: { autoRefreshToken: false, persistSession: false } }
 )
@@ -109,7 +113,7 @@ async function copyFile(file) {
     .from(bucket)
     .upload(file.path, buffer, {
       contentType: file.mimetype || blob.type || 'application/octet-stream',
-      cacheControl: '3600',
+      cacheControl: '31536000',
       upsert: true,
     })
 

@@ -10,6 +10,7 @@ import useEmblaCarousel from 'embla-carousel-react'
 import Image from 'next/image'
 import type { Flavor } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { getFlavorImageSrc } from '@/lib/image-utils'
 
 const TWEEN_FACTOR_BASE = 0.2
 
@@ -114,11 +115,13 @@ const FlavorEmblaCarousel = (props: PropType) => {
                 <div className="embla__parallax__layer">
                   <Image
                     className="embla__slide__img embla__parallax__img"
-                    src={flavor.image || '/images/clasica.jpg'}
+                    src={getFlavorImageSrc(flavor, 'thumb')}
                     alt={flavor.name}
                     width={600}
                     height={350}
                     priority={index === 0}
+                    quality={78}
+                    sizes="(max-width: 768px) 90vw, 600px"
                   />
                   {/* Overlay con nombre del sabor */}
                   <div className={cn(
