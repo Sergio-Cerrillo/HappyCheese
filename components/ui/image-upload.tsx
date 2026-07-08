@@ -10,11 +10,18 @@ import { toast } from 'sonner'
 interface ImageUploadProps {
   value?: string
   onChange: (url: string, metadata?: { thumbUrl?: string }) => void
+  onUploadingChange?: (isUploading: boolean) => void
   className?: string
   disabled?: boolean
 }
 
-export function ImageUpload({ value, onChange, className, disabled }: ImageUploadProps) {
+export function ImageUpload({
+  value,
+  onChange,
+  onUploadingChange,
+  className,
+  disabled,
+}: ImageUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [preview, setPreview] = useState<string | null>(value || null)
@@ -23,6 +30,10 @@ export function ImageUpload({ value, onChange, className, disabled }: ImageUploa
   useEffect(() => {
     setPreview(value || null)
   }, [value])
+
+  useEffect(() => {
+    onUploadingChange?.(isUploading)
+  }, [isUploading, onUploadingChange])
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault()

@@ -51,6 +51,7 @@ export function FlavorDialog({
   mode,
 }: FlavorDialogProps) {
   const [formData, setFormData] = useState<Partial<Flavor>>(INITIAL_FLAVOR)
+  const [isImageUploading, setIsImageUploading] = useState(false)
 
   useEffect(() => {
     if (mode === 'edit' && flavor) {
@@ -58,18 +59,23 @@ export function FlavorDialog({
     } else {
       setFormData(INITIAL_FLAVOR)
     }
+    setIsImageUploading(false)
   }, [flavor, mode, open])
 
   const handleSave = async () => {
+    if (isImageUploading) return
+
     const success = await onSave(formData)
     if (success) {
       setFormData(INITIAL_FLAVOR)
+      setIsImageUploading(false)
       onOpenChange(false)
     }
   }
 
   const handleClose = () => {
     setFormData(INITIAL_FLAVOR)
+    setIsImageUploading(false)
     onOpenChange(false)
   }
 
@@ -151,6 +157,7 @@ export function FlavorDialog({
                           imageThumb: metadata?.thumbUrl ?? prev.imageThumb ?? '',
                         }))
                       }
+                      onUploadingChange={setIsImageUploading}
                     />
                   </div>
                 </div>
@@ -329,14 +336,21 @@ export function FlavorDialog({
 
             <Button
               onClick={handleSave}
+              disabled={isImageUploading}
               className="
                 rounded-xl bg-[rgb(56,56,54)] text-white
                 transition-all duration-300
                 hover:scale-[1.02] hover:bg-[rgba(56,56,54,0.92)]
                 active:scale-[0.98]
+                disabled:cursor-not-allowed disabled:opacity-60
+                disabled:hover:scale-100 disabled:hover:bg-[rgb(56,56,54)]
               "
             >
-              {mode === 'create' ? 'Añadir sabor' : 'Guardar cambios'}
+              {isImageUploading
+                ? 'Subiendo imagen...'
+                : mode === 'create'
+                  ? 'Añadir sabor'
+                  : 'Guardar cambios'}
             </Button>
           </div>
         </SheetFooter>
