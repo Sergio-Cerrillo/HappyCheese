@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import sharp from 'sharp'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -15,18 +14,20 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 
 const BUCKET_NAME = 'happycheese-images'
 const CACHE_CONTROL = '31536000'
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
 
-async function uploadImage(path: string, buffer: Buffer) {
+async function uploadImage(path: string, buffer: Buffer, contentType: string) {
   return supabaseAdmin.storage
     .from(BUCKET_NAME)
     .upload(path, buffer, {
-      contentType: 'image/webp',
+      contentType,
       cacheControl: CACHE_CONTROL,
       upsert: false
     })
 }
 
 async function createOptimizedVariants(buffer: Buffer) {
+  const { default: sharp } = await import('sharp')
   const base = sharp(buffer, { failOn: 'none' }).rotate()
 
   const fullBuffer = await base
@@ -54,6 +55,22 @@ async function createOptimizedVariants(buffer: Buffer) {
   return { fullBuffer, thumbBuffer }
 }
 
+function getUploadExtension(contentType: string) {
+  switch (contentType) {
+    case 'image/jpeg':
+    case 'image/jpg':
+      return 'jpg'
+    case 'image/png':
+      return 'png'
+    case 'image/gif':
+      return 'gif'
+    case 'image/webp':
+      return 'webp'
+    default:
+      return 'bin'
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData()
@@ -75,40 +92,44 @@ export async function POST(request: Request) {
     }
 
     // Validar tamaño (5MB max)
-    const maxSize = 5 * 1024 * 1024 // 5MB
-    if (file.size > maxSize) {
+    if (file.size > MAX_IMAGE_SIZE) {
       return NextResponse.json(
         { error: 'La imagen no debe superar los 5MB' },
         { status: 400 }
       )
     }
 
-    // Generar nombre único para versiones optimizadas
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.webp`
-    const filePath = `flavors/${fileName}`
-    const thumbPath = `flavors/thumbs/${fileName}`
+    const fileId = `${Date.now()}-${Math.random().toString(36).substring(2)}`
 
     // Convertir File a ArrayBuffer
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    let fullBuffer: Buffer
-    let thumbBuffer: Buffer
+    let fullBuffer = buffer
+    let thumbBuffer: Buffer | null = null
+    let fullContentType = file.type
+    let thumbContentType: string | null = null
+    let fileName = `${fileId}.${getUploadExtension(file.type)}`
+    let thumbName: string | null = null
 
     try {
       const optimized = await createOptimizedVariants(buffer)
       fullBuffer = optimized.fullBuffer
       thumbBuffer = optimized.thumbBuffer
+      fullContentType = 'image/webp'
+      thumbContentType = 'image/webp'
+      fileName = `${fileId}.webp`
+      thumbName = fileName
     } catch (error) {
       console.error('Image optimization error:', error)
-      return NextResponse.json(
-        { error: 'No se pudo optimizar la imagen' },
-        { status: 400 }
-      )
     }
 
+    // Generar nombre único para imagen y miniatura optimizada, si existe
+    const filePath = `flavors/${fileName}`
+    const thumbPath = thumbName ? `flavors/thumbs/${thumbName}` : null
+
     // Subir a Supabase Storage
-    const { data, error } = await uploadImage(filePath, fullBuffer)
+    const { data, error } = await uploadImage(filePath, fullBuffer, fullContentType)
 
     if (error) {
       console.error('Supabase storage error:', error)
@@ -117,7 +138,7 @@ export async function POST(request: Request) {
       if (error.message.includes('not found')) {
         const { error: bucketError } = await supabaseAdmin.storage.createBucket(BUCKET_NAME, {
           public: true,
-          fileSizeLimit: maxSize,
+          fileSizeLimit: MAX_IMAGE_SIZE,
         })
 
         if (bucketError) {
@@ -129,7 +150,7 @@ export async function POST(request: Request) {
         }
 
         // Reintentar upload
-        const { data: retryData, error: retryError } = await uploadImage(filePath, fullBuffer)
+        const { data: retryData, error: retryError } = await uploadImage(filePath, fullBuffer, fullContentType)
 
         if (retryError) {
           return NextResponse.json(
@@ -138,22 +159,32 @@ export async function POST(request: Request) {
           )
         }
 
-        const { data: retryThumbData, error: retryThumbError } = await uploadImage(thumbPath, thumbBuffer)
+        let retryThumbPath: string | null = null
+        if (thumbPath && thumbBuffer && thumbContentType) {
+          const { data: retryThumbData, error: retryThumbError } = await uploadImage(thumbPath, thumbBuffer, thumbContentType)
 
-        if (retryThumbError) {
-          return NextResponse.json(
-            { error: 'Error al subir miniatura' },
-            { status: 500 }
-          )
+          if (retryThumbError) {
+            return NextResponse.json(
+              { error: 'Error al subir miniatura' },
+              { status: 500 }
+            )
+          }
+
+          retryThumbPath = retryThumbData.path
         }
 
         // Obtener URL pública
         const { data: urlData } = supabaseAdmin.storage
           .from(BUCKET_NAME)
           .getPublicUrl(retryData.path)
+
+        if (!retryThumbPath) {
+          return NextResponse.json({ url: urlData.publicUrl })
+        }
+
         const { data: thumbUrlData } = supabaseAdmin.storage
           .from(BUCKET_NAME)
-          .getPublicUrl(retryThumbData.path)
+          .getPublicUrl(retryThumbPath)
 
         return NextResponse.json({ url: urlData.publicUrl, thumbUrl: thumbUrlData.publicUrl })
       }
@@ -164,7 +195,15 @@ export async function POST(request: Request) {
       )
     }
 
-    const { data: thumbData, error: thumbError } = await uploadImage(thumbPath, thumbBuffer)
+    if (!thumbPath || !thumbBuffer || !thumbContentType) {
+      const { data: urlData } = supabaseAdmin.storage
+        .from(BUCKET_NAME)
+        .getPublicUrl(data.path)
+
+      return NextResponse.json({ url: urlData.publicUrl })
+    }
+
+    const { data: thumbData, error: thumbError } = await uploadImage(thumbPath, thumbBuffer, thumbContentType)
 
     if (thumbError) {
       console.error('Supabase thumbnail upload error:', thumbError)
