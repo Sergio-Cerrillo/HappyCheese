@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { stripe, formatAmountForStripe } from '@/lib/stripe'
 import { createOrder, getStoreById } from '@/lib/db'
+import supabase from '@/lib/supabase'
 import { getPickupValidationMessage, isValidPickupDate } from '@/lib/date-utils'
 
 const PORTION_LABELS: Record<string, string> = {
@@ -11,6 +12,8 @@ const PORTION_LABELS: Record<string, string> = {
 }
 
 export async function POST(request: Request) {
+  let orderId: string | undefined
+  let sessionCreated = false
   try {
     const data = await request.json()
 
@@ -70,9 +73,12 @@ export async function POST(request: Request) {
       notes: data.notes,
       total: data.total,
       status: 'pendiente',
+      paymentStatus: 'pending',
       pickupDate: data.pickupDate,
       pickupTime: data.pickupTime,
     })
+
+    orderId = order.id
 
     // Crear line items para Stripe
     const lineItems = data.items.map(
@@ -101,6 +107,7 @@ export async function POST(request: Request) {
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
+      payment_intent_data: { metadata: { orderId: order.id } },
       success_url: `${appUrl}/pedido/confirmacion?session_id={CHECKOUT_SESSION_ID}&order_id=${order.id}`,
       cancel_url: `${appUrl}/pedido?canceled=true`,
       customer_email: data.customerEmail,
@@ -117,13 +124,14 @@ export async function POST(request: Request) {
       locale: 'es',
     })
 
-    // Guardar el session ID en el pedido
-    // (esto se hace en el webhook, pero lo guardamos aquí también por si acaso)
-    const supabase = (await import('@/lib/supabase')).default
-    await supabase
+    sessionCreated = true
+
+    // El webhook también puede asociar el pedido mediante sus metadatos.
+    const { error: sessionError } = await supabase
       .from('orders')
       .update({ stripeSessionId: session.id })
       .eq('id', order.id)
+    if (sessionError) throw sessionError
 
     return NextResponse.json({
       sessionId: session.id,
@@ -132,6 +140,12 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('Error creating checkout session:', error)
+    if (orderId && !sessionCreated) {
+      const { error: cleanupError } = await supabase.from('orders').update({
+        status: 'cancelado', paymentStatus: 'failed', updatedAt: new Date().toISOString(),
+      }).eq('id', orderId).eq('paymentStatus', 'pending')
+      if (cleanupError) console.error('Error marking failed checkout:', cleanupError)
+    }
     return NextResponse.json(
       { error: 'Error al crear sesión de pago' },
       { status: 500 }

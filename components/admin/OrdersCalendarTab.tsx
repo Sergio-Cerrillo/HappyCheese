@@ -4,6 +4,7 @@ import { useState, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import type { Order } from "@/lib/types"
+import { canConfirmOrder } from "@/lib/order-status"
 import { Calendar as CalendarIcon } from "lucide-react"
 
 import type { Store } from "@/lib/types"
@@ -46,7 +47,7 @@ export function OrdersCalendarTab({ orders, stores }: OrdersCalendarTabProps) {
 
   // Filtrar pedidos por tienda activa
   const filteredOrders = useMemo(() => {
-    return orders.filter((order) => order.storeId === activeStore)
+    return orders.filter((order) => order.storeId === activeStore && canConfirmOrder(order) && order.status !== 'cancelado')
   }, [orders, activeStore])
 
   // Agrupar pedidos por día

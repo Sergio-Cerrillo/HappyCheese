@@ -44,6 +44,29 @@ export function useAdminData(): AdminData {
     loadData()
   }, [loadData])
 
+  useEffect(() => {
+    let active = true
+    const refreshOrders = async () => {
+      if (document.visibilityState !== 'visible') return
+      try {
+        const response = await fetch('/api/orders', { cache: 'no-store' })
+        if (response.ok) {
+          const updated = await response.json()
+          if (active) setOrders(updated)
+        }
+      } catch (error) {
+        console.error('Error refreshing orders:', error)
+      }
+    }
+    const interval = setInterval(refreshOrders, 30_000)
+    document.addEventListener('visibilitychange', refreshOrders)
+    return () => {
+      active = false
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', refreshOrders)
+    }
+  }, [])
+
   return {
     stores,
     flavors,

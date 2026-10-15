@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { OrderCard } from './OrderCard'
 import type { Order } from '@/lib/types'
+import { PAYMENT_LABELS } from '@/lib/order-status'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -15,6 +16,7 @@ export function OrdersTab({ orders, onStatusChange }: OrdersTabProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('todos')
   const [storeFilter, setStoreFilter] = useState<string>('todas')
+  const [paymentFilter, setPaymentFilter] = useState<string>('todos')
 
   // Ordenar por más reciente primero
   const sortedOrders = [...orders].sort(
@@ -38,7 +40,8 @@ export function OrdersTab({ orders, onStatusChange }: OrdersTabProps) {
     // Filtro de tienda
     const matchesStore = storeFilter === 'todas' || order.storeId === storeFilter
 
-    return matchesSearch && matchesStatus && matchesStore
+    const matchesPayment = paymentFilter === 'todos' || (paymentFilter === 'unknown' ? !order.paymentStatus : order.paymentStatus === paymentFilter)
+    return matchesSearch && matchesStatus && matchesStore && matchesPayment
   })
 
   // Obtener tiendas únicas
@@ -127,7 +130,7 @@ export function OrdersTab({ orders, onStatusChange }: OrdersTabProps) {
         </div>
 
         {/* Búsqueda y Filtros */}
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           {/* Búsqueda */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgba(56,56,54,0.4)]" />
@@ -155,10 +158,22 @@ export function OrdersTab({ orders, onStatusChange }: OrdersTabProps) {
               </SelectContent>
             </Select>
           </div>
+          <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+            <SelectTrigger className="rounded-xl border-[rgba(56,56,54,0.1)] bg-white/75">
+              <SelectValue placeholder="Estado del pago" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos los pagos</SelectItem>
+              {Object.entries(PAYMENT_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+              <SelectItem value="unknown">Pago sin verificar</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Contador de resultados */}
-        {(searchQuery || statusFilter !== 'todos' || storeFilter !== 'todas') && (
+        {(searchQuery || statusFilter !== 'todos' || storeFilter !== 'todas' || paymentFilter !== 'todos') && (
           <div className="mt-4 text-center">
             <p className="text-sm text-[rgba(56,56,54,0.6)]">
               Mostrando <strong className="text-[rgb(56,56,54)]">{filteredOrders.length}</strong> de{' '}

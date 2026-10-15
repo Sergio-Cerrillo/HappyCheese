@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/select'
 import { MapPin, Clock } from 'lucide-react'
 import type { Order, PortionType } from '@/lib/types'
+import { canConfirmOrder, getPaymentLabel } from '@/lib/order-status'
 
 interface OrderCardProps {
   order: Order
@@ -59,6 +60,7 @@ export function OrderCard({ order, onStatusChange }: OrderCardProps) {
             <Badge className={getStatusBadgeClasses(order.status)}>
               {order.status}
             </Badge>
+            <Badge variant="outline">{getPaymentLabel(order)}</Badge>
           </div>
 
           <p className="text-sm text-[rgba(56,56,54,0.52)]">
@@ -88,11 +90,17 @@ export function OrderCard({ order, onStatusChange }: OrderCardProps) {
 
             <SelectContent>
               <SelectItem value="pendiente">Pendiente</SelectItem>
-              <SelectItem value="confirmado">Confirmado</SelectItem>
-              <SelectItem value="completado">Completado</SelectItem>
+              <SelectItem value="confirmado" disabled={!canConfirmOrder(order)}>Confirmado</SelectItem>
+              <SelectItem value="completado" disabled={!canConfirmOrder(order)}>Completado</SelectItem>
               <SelectItem value="cancelado">Cancelado</SelectItem>
             </SelectContent>
           </Select>
+          <p className="text-xs text-muted-foreground">
+            {order.customerConfirmationSentAt ? 'Confirmación enviada al cliente' : 'Sin envío de confirmación registrado'}
+          </p>
+          {order.status === 'cancelado' && canConfirmOrder(order) && (
+            <p className="text-xs text-amber-700">Cancelar el pedido no reembolsa el pago en Stripe.</p>
+          )}
         </div>
       </div>
 

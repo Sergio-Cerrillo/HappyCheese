@@ -1,5 +1,6 @@
 "use client"
 
+import { getOrderRevenue, isPaidOrder } from '@/lib/order-status'
 import { useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -112,8 +113,8 @@ export function AnalyticsTab({ orders, stores }: AnalyticsTabProps) {
   // Filtrar pedidos según período y tienda
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
-      // Solo pedidos completados o confirmados (no cancelados ni pendientes de pago)
-      if (order.status === "cancelado" || order.paymentStatus === "failed") {
+      // Solo pagos verificados con saldo cobrado; cancelar no implica reembolsar.
+      if (!isPaidOrder(order)) {
         return false
       }
 
@@ -132,7 +133,7 @@ export function AnalyticsTab({ orders, stores }: AnalyticsTabProps) {
 
   // Calcular métricas principales
   const metrics = useMemo(() => {
-    const totalRevenue = filteredOrders.reduce((sum, order) => sum + order.total, 0)
+    const totalRevenue = filteredOrders.reduce((sum, order) => sum + getOrderRevenue(order), 0)
     const totalOrders = filteredOrders.length
     const avgTicket = totalOrders > 0 ? totalRevenue / totalOrders : 0
 
@@ -158,7 +159,8 @@ export function AnalyticsTab({ orders, stores }: AnalyticsTabProps) {
         flavorMap.set(item.flavorName, {
           name: item.flavorName,
           quantity: current.quantity + item.quantity,
-          revenue: current.revenue + item.price * item.quantity,
+          // Distribución proporcional del reembolso: Stripe no identifica el producto devuelto.
+          revenue: current.revenue + item.price * item.quantity * (order.total > 0 ? getOrderRevenue(order) / order.total : 0),
         })
       })
     })
@@ -183,7 +185,8 @@ export function AnalyticsTab({ orders, stores }: AnalyticsTabProps) {
         portionMap.set(item.portion, {
           portion: item.portion,
           quantity: current.quantity + item.quantity,
-          revenue: current.revenue + item.price * item.quantity,
+          // Distribución proporcional del reembolso: Stripe no identifica el producto devuelto.
+          revenue: current.revenue + item.price * item.quantity * (order.total > 0 ? getOrderRevenue(order) / order.total : 0),
         })
       })
     })
@@ -208,7 +211,7 @@ export function AnalyticsTab({ orders, stores }: AnalyticsTabProps) {
       storeMap.set(order.storeId, {
         name: order.storeName,
         orders: current.orders + 1,
-        revenue: current.revenue + order.total,
+        revenue: current.revenue + getOrderRevenue(order),
       })
     })
 

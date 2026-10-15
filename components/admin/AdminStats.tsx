@@ -1,6 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { ShoppingBag, TrendingUp } from 'lucide-react'
 import type { Order } from '@/lib/types'
+import { getOrderRevenue } from '@/lib/order-status'
 
 interface AdminStatsProps {
   orders: Order[]
@@ -11,9 +12,7 @@ interface AdminStatsProps {
  * Principio Single Responsibility: Solo muestra estadísticas
  */
 export function AdminStats({ orders }: AdminStatsProps) {
-  const totalRevenue = orders
-    .filter(o => o.status !== 'cancelado')
-    .reduce((sum, o) => sum + o.total, 0)
+  const totalRevenue = orders.reduce((sum, o) => sum + getOrderRevenue(o), 0)
 
   return (
     <div className="grid md:grid-cols-2 gap-6 mb-8">

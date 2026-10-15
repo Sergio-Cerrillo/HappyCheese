@@ -896,14 +896,14 @@ export function OrderForm() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Notas adicionales (opcional)</Label>
+              <Label htmlFor="notes">Alergias e información relevante(opcional)</Label>
               <Textarea
                 id="notes"
                 value={customerInfo.notes}
                 onChange={(e) =>
                   setCustomerInfo((prev) => ({ ...prev, notes: e.target.value }))
                 }
-                placeholder="Alergias, dedicatorias, o cualquier petición especial..."
+                placeholder="Indica únicamente alergias u otras cuestiones importantes relacionadas con tu pedido."
                 rows={4}
                 className="rounded-xl border-[rgba(56,56,54,0.1)] bg-white/75"
               />

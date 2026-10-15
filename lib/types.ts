@@ -74,8 +74,11 @@ export interface Order {
   // Campos de pago con Stripe
   stripeSessionId?: string
   stripePaymentIntentId?: string
-  paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded'
+  paymentStatus?: 'pending' | 'paid' | 'failed' | 'expired' | 'refunded' | 'partially_refunded'
   paidAt?: string
+  customerConfirmationSentAt?: string
+  storeNotificationSentAt?: string
+  refundedAmount?: number
 }
 
 export interface Admin {

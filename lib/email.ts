@@ -270,7 +270,7 @@ export async function sendCustomerConfirmationEmail({
       to,
       subject: `Pedido confirmado #${orderId.slice(0, 8).toUpperCase()} - Happy Cheese`,
       html,
-    })
+    }, { idempotencyKey: `order-confirmation/${orderId}` })
 
     if (error) {
       console.error('Error sending customer email:', error)
@@ -498,7 +498,7 @@ export async function sendStoreNotificationEmail({
       to: storeEmail,
       subject: `Nuevo pedido #${orderId.slice(0, 8).toUpperCase()} - ${storeName}`,
       html,
-    })
+    }, { idempotencyKey: `store-notification/${orderId}` })
 
     if (error) {
       console.error('Error sending store email:', error)

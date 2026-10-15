@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { getOrders, createOrder, updateOrder, getStoreById } from '@/lib/db'
+import { getOrders, updateOrder, getOrderById } from '@/lib/db'
 import { getSessionById } from '@/lib/db'
-import { getPickupValidationMessage, isValidPickupDate } from '@/lib/date-utils'
+import { canConfirmOrder } from '@/lib/order-status'
 import { cookies } from 'next/headers'
 
 async function checkAuth(): Promise<boolean> {
@@ -33,77 +33,9 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
-  try {
-    const data = await request.json()
-    
-    // Validaciones
-    if (!data.items || !Array.isArray(data.items) || data.items.length === 0) {
-      return NextResponse.json(
-        { error: 'El pedido debe contener al menos un producto' },
-        { status: 400 }
-      )
-    }
-    
-    if (!data.storeId || !data.storeName) {
-      return NextResponse.json(
-        { error: 'Tienda requerida' },
-        { status: 400 }
-      )
-    }
-    
-    if (!data.customerName || !data.customerEmail || !data.customerPhone) {
-      return NextResponse.json(
-        { error: 'Datos del cliente incompletos' },
-        { status: 400 }
-      )
-    }
-    
-    if (!data.pickupDate || !data.pickupTime) {
-      return NextResponse.json(
-        { error: 'Fecha y hora de recogida requeridas' },
-        { status: 400 }
-      )
-    }
-    
-    const store = await getStoreById(data.storeId)
-    if (!store || !store.active) {
-      return NextResponse.json(
-        { error: 'Tienda no disponible' },
-        { status: 400 }
-      )
-    }
-
-    // Validar fecha de recogida con las reglas de la tienda
-    if (!isValidPickupDate(data.pickupDate, data.pickupTime, store)) {
-      return NextResponse.json(
-        { error: getPickupValidationMessage(data.pickupDate, data.pickupTime, store) },
-        { status: 400 }
-      )
-    }
-    
-    const order = await createOrder({
-      items: data.items,
-      storeId: data.storeId,
-      storeName: data.storeName,
-      customerName: data.customerName,
-      customerEmail: data.customerEmail,
-      customerPhone: data.customerPhone,
-      notes: data.notes,
-      total: data.total,
-      status: 'pendiente',
-      pickupDate: data.pickupDate,
-      pickupTime: data.pickupTime
-    })
-    
-    return NextResponse.json(order)
-  } catch (error) {
-    console.error('Error creating order:', error)
-    return NextResponse.json(
-      { error: 'Error al crear pedido' },
-      { status: 500 }
-    )
-  }
+// Los pedidos públicos se crean exclusivamente mediante /api/checkout.
+export async function POST() {
+  return NextResponse.json({ error: 'Utiliza el proceso de pago para crear el pedido' }, { status: 410 })
 }
 
 export async function PUT(request: Request) {
@@ -116,7 +48,7 @@ export async function PUT(request: Request) {
       )
     }
     
-    const { id, ...updates } = await request.json()
+    const { id, status } = await request.json()
     
     if (!id) {
       return NextResponse.json(
@@ -125,7 +57,18 @@ export async function PUT(request: Request) {
       )
     }
     
-    const order = await updateOrder(id, updates)
+    if (!['pendiente', 'confirmado', 'completado', 'cancelado'].includes(status)) {
+      return NextResponse.json({ error: 'Estado no válido' }, { status: 400 })
+    }
+    const existing = await getOrderById(id)
+    if (!existing) {
+      return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 })
+    }
+    if ((status === 'confirmado' || status === 'completado') && !canConfirmOrder(existing)) {
+      return NextResponse.json({ error: 'No se puede confirmar o completar un pedido sin pago verificado' }, { status: 409 })
+    }
+    // El estado del pago solo lo modifica el webhook de Stripe.
+    const order = await updateOrder(id, { status })
     
     if (!order) {
       return NextResponse.json(
