@@ -904,8 +904,8 @@ export function OrderForm() {
                   setCustomerInfo((prev) => ({ ...prev, notes: e.target.value }))
                 }
                 placeholder="Indica únicamente alergias u otras cuestiones importantes relacionadas con tu pedido."
-                rows={4}
-                className="rounded-xl border-[rgba(56,56,54,0.1)] bg-white/75"
+                rows={6}
+                className="min-h-36 rounded-xl border-[rgba(56,56,54,0.1)] bg-white/75"
               />
             </div>
           </CardContent>
