@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { stripe, formatAmountForStripe } from '@/lib/stripe'
 import { createOrder, getStoreById } from '@/lib/db'
-import supabase from '@/lib/supabase'
+import supabase from '@/lib/supabase-admin'
 import { getPickupValidationMessage, isValidPickupDate } from '@/lib/date-utils'
 
 const PORTION_LABELS: Record<string, string> = {
@@ -131,6 +131,8 @@ export async function POST(request: Request) {
       .from('orders')
       .update({ stripeSessionId: session.id })
       .eq('id', order.id)
+      .select('id')
+      .single()
     if (sessionError) throw sessionError
 
     return NextResponse.json({

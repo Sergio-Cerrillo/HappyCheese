@@ -44,9 +44,15 @@ function ConfirmationContent() {
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [verificationError, setVerificationError] = useState(false)
+  const [retry, setRetry] = useState(0)
 
   useEffect(() => {
     let active = true
+    setOrder(null)
+    setLoading(true)
+    setError(null)
+    setVerificationError(false)
     async function loadOrderData() {
       if (canceled) {
         setLoading(false)
@@ -54,34 +60,36 @@ function ConfirmationContent() {
         return
       }
 
-      if (!orderId) {
+      if (!orderId || !sessionId) {
         setLoading(false)
         setError('no_order_id')
         return
       }
 
       try {
-        const supabase = (await import('@/lib/supabase')).default
-        const { data: orderData, error: orderError } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('id', orderId)
-          .single()
-
+        const response = await fetch('/api/checkout/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId, orderId }),
+          cache: 'no-store',
+        })
+        if (!response.ok) throw new Error('Payment verification unavailable')
+        const orderData: Order = await response.json()
         if (!active) return
-        if (orderError || !orderData) {
-          console.error('Error loading order:', orderError)
-          setError('not_found')
-          setLoading(false)
-          return
-        }
-
         setOrder(orderData)
+        setError(null)
+        setVerificationError(false)
         setLoading(false)
+        return orderData.paymentStatus === 'paid' && !!orderData.customerConfirmationSentAt
+          || orderData.paymentStatus === 'refunded'
+          || orderData.paymentStatus === 'expired'
+          || orderData.paymentStatus === 'partially_refunded'
+
       } catch (err) {
         if (!active) return
         console.error('Error loading order:', err)
-        setError('unknown')
+        setVerificationError(true)
+        setError('verification')
         setLoading(false)
       }
     }
@@ -90,12 +98,12 @@ function ConfirmationContent() {
     let attempts = 0
     const poll = async () => {
       if (!active) return
-      await loadOrderData()
-      if (active && orderId && !canceled && ++attempts < 10) timer = setTimeout(poll, 3000)
+      const complete = await loadOrderData()
+      if (active && !complete && orderId && sessionId && !canceled && ++attempts < 20) timer = setTimeout(poll, 3000)
     }
     poll()
     return () => { active = false; clearTimeout(timer) }
-  }, [orderId, canceled])
+  }, [orderId, sessionId, canceled, retry])
 
   if (loading) {
     return (
@@ -105,7 +113,7 @@ function ConfirmationContent() {
         >
           <Loader2 className="mx-auto h-10 w-10 animate-spin text-[rgb(56,56,54)]" />
           <p className="mt-5 text-[rgba(56,56,54,0.7)]">
-            Cargando información del pedido...
+            Verificando tu pago con Stripe...
           </p>
         </div>
       </div>
@@ -152,7 +160,7 @@ function ConfirmationContent() {
     )
   }
 
-  if (error || !order) {
+  if (!order && (error || !loading)) {
     return (
       <Card className={`${shellCardClass} mx-auto max-w-2xl`}>
         <CardContent className="space-y-8 px-6 pb-10 pt-12 text-center md:px-10">
@@ -165,20 +173,20 @@ function ConfirmationContent() {
               Incidencia
             </p>
             <h1 className="font-bebas text-4xl leading-none text-[rgb(56,56,54)] md:text-6xl">
-              Error en el pedido
+              No hemos podido verificar el pago
             </h1>
             <p className="mx-auto max-w-xl text-[rgba(56,56,54,0.68)] md:text-lg">
-              No se pudo encontrar tu pedido. Si has realizado el pago, revisa tu email
-              para la confirmación.
+              Si ya has pagado, no repitas el pedido. Estamos intentando comprobar
+              el pago con Stripe. Puedes volver a consultarlo en unos instantes.
             </p>
           </div>
 
           <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-center">
             <Button
-              asChild
+              onClick={() => { setLoading(true); setRetry(value => value + 1) }}
               className="rounded-xl bg-[rgb(56,56,54)] text-white hover:bg-[rgba(56,56,54,0.92)]"
             >
-              <Link href="/pedido">Intentar de nuevo</Link>
+              Volver a comprobar el pago
             </Button>
             <Button
               asChild
@@ -193,14 +201,21 @@ function ConfirmationContent() {
     )
   }
 
+  if (!order) return null
+
   const isPaid = order.paymentStatus === 'paid' || order.paymentStatus === 'partially_refunded'
   const isCanceled = order.status === 'cancelado'
   const emailSent = !!order.customerConfirmationSentAt
-  const isPending = order.paymentStatus === 'pending'
 
   return (
     <Card className={`${shellCardClass} mx-auto max-w-4xl bg-white`}>
       <CardContent className="space-y-8 px-6 pb-10 pt-12 md:px-10">
+        {verificationError && (
+          <p role="status" className="rounded-2xl bg-amber-50 p-4 text-sm text-amber-800">
+            No hemos podido volver a consultar Stripe. Este es el último estado verificado.
+            Si ya has pagado, no repitas el pedido.
+          </p>
+        )}
         {/* Header */}
         <div className="space-y-5 text-center">
           <div
@@ -220,7 +235,7 @@ function ConfirmationContent() {
             </p>
 
             <h1 className="font-bebas text-4xl leading-none text-[rgb(56,56,54)] md:text-6xl">
-              {isCanceled ? 'Pedido cancelado' : isPaid ? '¡Pedido confirmado!' : getPaymentLabel(order)}
+              {isCanceled ? 'Pedido cancelado' : isPaid ? '¡Pedido pagado correctamente!' : getPaymentLabel(order)}
             </h1>
 
             <p className="mx-auto max-w-2xl text-[rgba(56,56,54,0.68)] md:text-lg">
@@ -238,7 +253,7 @@ function ConfirmationContent() {
                 Número de pedido
               </p>
               <p className="mt-1 text-lg font-semibold tracking-[0.06em] text-[rgb(56,56,54)]">
-                #{order.id.slice(0, 8).toUpperCase()}
+                #{order.id}
               </p>
             </div>
           </div>
@@ -380,11 +395,11 @@ function ConfirmationContent() {
 
           {!isPaid && (
             <Button
-              asChild
+              onClick={() => setRetry(value => value + 1)}
               variant="outline"
               className="rounded-xl border-[rgba(56,56,54,0.14)] bg-white/70 text-[rgb(56,56,54)]"
             >
-              <Link href="/pedido">Hacer otro pedido</Link>
+              Volver a comprobar el pago
             </Button>
           )}
         </div>

@@ -25,6 +25,9 @@ export default function AdminPage() {
     flavors: allFlavors,
     orders: allOrders,
     loading,
+    ordersRefreshing,
+    ordersSyncError,
+    refreshOrders,
   } = useAdminData()
 
   const { stores, setStores, addStore, updateStore, deleteStore } =
@@ -44,7 +47,13 @@ export default function AdminPage() {
   }, [allFlavors, setFlavors])
 
   useEffect(() => {
-    setOrders(allOrders)
+    // Una consulta iniciada antes de una acción del admin puede terminar después.
+    // Conservar la versión más reciente en vez de revertir su cambio en pantalla.
+    setOrders(previous => allOrders.map(incoming => {
+      const current = previous.find(order => order.id === incoming.id)
+      return current && new Date(current.updatedAt).getTime() > new Date(incoming.updatedAt).getTime()
+        ? { ...current, paymentSyncError: incoming.paymentSyncError } : incoming
+    }))
   }, [allOrders, setOrders])
 
   const handleLogout = async () => {
@@ -167,6 +176,14 @@ export default function AdminPage() {
               md:p-6
             "
           >
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground" role="status">
+                {ordersSyncError || (ordersRefreshing ? 'Comprobando pagos en Stripe…' : 'Los pagos se comprueban periódicamente con Stripe.')}
+              </p>
+              <Button variant="outline" onClick={() => refreshOrders()} disabled={ordersRefreshing}>
+                {ordersRefreshing ? 'Actualizando…' : 'Actualizar pedidos'}
+              </Button>
+            </div>
             <AdminStats orders={orders} />
           </div>
 

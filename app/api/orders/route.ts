@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getOrders, updateOrder, getOrderById } from '@/lib/db'
 import { getSessionById } from '@/lib/db'
 import { canConfirmOrder } from '@/lib/order-status'
+import { reconcileOrders, findOrderSession, syncCheckoutSession } from '@/lib/order-payments'
 import { cookies } from 'next/headers'
 
 async function checkAuth(): Promise<boolean> {
@@ -22,8 +23,11 @@ export async function GET() {
       )
     }
     
-    const orders = await getOrders()
-    return NextResponse.json(orders)
+    const orders = await reconcileOrders(await getOrders())
+    return NextResponse.json(orders, { headers: {
+      'Cache-Control': 'private, no-store',
+      'X-Order-Sync-Errors': String(orders.filter(order => order.paymentSyncError).length),
+    } })
   } catch (error) {
     console.error('Error fetching orders:', error)
     return NextResponse.json(
@@ -60,20 +64,24 @@ export async function PUT(request: Request) {
     if (!['pendiente', 'confirmado', 'completado', 'cancelado'].includes(status)) {
       return NextResponse.json({ error: 'Estado no válido' }, { status: 400 })
     }
-    const existing = await getOrderById(id)
+    let existing = await getOrderById(id)
     if (!existing) {
       return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 })
     }
-    if ((status === 'confirmado' || status === 'completado') && !canConfirmOrder(existing)) {
-      return NextResponse.json({ error: 'No se puede confirmar o completar un pedido sin pago verificado' }, { status: 409 })
+    if (status === 'confirmado' || status === 'completado') {
+      const sessionId = await findOrderSession(existing)
+      if (sessionId) existing = await syncCheckoutSession(sessionId, id)
+      if (!sessionId || !canConfirmOrder(existing)) {
+        return NextResponse.json({ error: 'No se puede confirmar o completar un pedido sin pago verificado' }, { status: 409 })
+      }
     }
     // El estado del pago solo lo modifica el webhook de Stripe.
-    const order = await updateOrder(id, { status })
+    const order = await updateOrder(id, { status }, existing.updatedAt)
     
     if (!order) {
       return NextResponse.json(
-        { error: 'Pedido no encontrado' },
-        { status: 404 }
+        { error: 'El pedido ha cambiado o no se ha podido guardar. Actualiza los pedidos y vuelve a intentarlo.' },
+        { status: 409 }
       )
     }
     

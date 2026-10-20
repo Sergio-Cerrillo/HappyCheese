@@ -10,7 +10,6 @@ import { HeroSection2 } from '@/components/sections/hero2'
 import { HeroSection3 } from '@/components/sections/hero3'
 import GalleryMinimalist from '@/components/sections/gallery-minimalist'
 import { FeaturesCardsOnly } from '@/components/sections/info-cards'
-import { ProductShowcase } from '@/components/sections/product-showcase'
 
 export default function HomePage() {
   return (

@@ -1,4 +1,4 @@
-import { db } from './supabase'
+import { db } from './supabase-admin'
 import type { Store, Flavor, Order, Admin, Session } from './types'
 
 // Stores
@@ -167,16 +167,19 @@ export async function createOrder(order: Omit<Order, 'id' | 'createdAt' | 'updat
   return data
 }
 
-export async function updateOrder(id: string, updates: Partial<Order>): Promise<Order | null> {
-  const { data, error } = await db
+export async function updateOrder(id: string, updates: Partial<Order>, expectedUpdatedAt?: string): Promise<Order | null> {
+  let query = db
     .from('orders')
     .update({
       ...updates,
       updatedAt: new Date().toISOString()
     })
     .eq('id', id)
-    .select()
-    .single()
+  if (expectedUpdatedAt) query = query.eq('updatedAt', expectedUpdatedAt)
+  if (updates.status === 'confirmado' || updates.status === 'completado') {
+    query = query.in('paymentStatus', ['paid', 'partially_refunded'])
+  }
+  const { data, error } = await query.select().single()
   
   if (error) return null
   return data

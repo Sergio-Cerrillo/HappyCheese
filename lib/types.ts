@@ -79,6 +79,27 @@ export interface Order {
   customerConfirmationSentAt?: string
   storeNotificationSentAt?: string
   refundedAmount?: number
+  // Solo en las respuestas del panel; no se persiste en la base de datos.
+  paymentSyncError?: boolean
+}
+
+export interface StripeAttemptDetails {
+  found: boolean
+  checkedAt: string
+  summary: string
+  sessionId?: string
+  sessionStatus?: string
+  paymentStatus?: string
+  paymentIntentId?: string
+  paymentIntentStatus?: string
+  createdAt?: string
+  expiresAt?: string
+  refundedAmount?: number
+  lastPaymentError?: {
+    message?: string
+    code?: string
+    declineCode?: string
+  }
 }
 
 export interface Admin {
