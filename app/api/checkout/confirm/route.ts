@@ -1,5 +1,7 @@
 import { after, NextResponse } from 'next/server'
 import { PaymentSyncError, sendOrderNotifications, syncCheckoutSession } from '@/lib/order-payments'
+import { getStoreById } from '@/lib/db'
+import { getStoreReviewUrl } from '@/lib/store-reviews'
 
 export async function POST(request: Request) {
   try {
@@ -15,7 +17,15 @@ export async function POST(request: Request) {
       try { await sendOrderNotifications(order) }
       catch (error) { console.error('Order notification pending:', order.id, error) }
     })
-    return NextResponse.json(order, { headers: { 'Cache-Control': 'private, no-store' } })
+    let storeReviewUrl = getStoreReviewUrl(order.storeId)
+    try {
+      const store = await getStoreById(order.storeId)
+      storeReviewUrl = getStoreReviewUrl(order.storeId, store?.googleReviewUrl)
+    } catch (error) {
+      // El enlace opcional nunca debe impedir mostrar un pago ya verificado.
+      console.error('Store review link unavailable:', order.storeId, error)
+    }
+    return NextResponse.json({ ...order, storeReviewUrl }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
     console.error('Checkout verification failed:', error)
     return NextResponse.json({

@@ -1,9 +1,10 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Pencil, Trash2, Store as StoreIcon, Sparkles } from 'lucide-react'
+import { Pencil, Trash2, Store as StoreIcon, Layers3 } from 'lucide-react'
 import Image from 'next/image'
 import { getFlavorImageSrc } from '@/lib/image-utils'
 import type { Flavor, Store, PortionType } from '@/lib/types'
+import { FlavorBasesSummary } from './FlavorBasesSummary'
 
 interface FlavorCardProps {
   flavor: Flavor
@@ -106,6 +107,9 @@ export function FlavorCard({
                     No disponible
                   </Badge>
                 )}
+                {!!flavor.customBases?.length && <Badge className="gap-1.5 rounded-full border-[#e0dbd0] bg-[#f2efe7] px-2.5 text-[#625c52] shadow-none">
+                  <Layers3 className="h-3 w-3" aria-hidden="true" /> {flavor.customBasesEnabled ? 'Base personalizable' : 'Base personalizable no disponible'}
+                </Badge>}
               </div>
 
               <p className="mt-3 max-w-2xl text-sm leading-7 text-[rgba(56,56,54,0.70)]">
@@ -126,6 +130,7 @@ export function FlavorCard({
                   hover:scale-[1.03] hover:bg-[rgba(56,56,54,0.05)]
                 "
                 onClick={() => onEdit(flavor)}
+                aria-label={`Editar ${flavor.name}`}
               >
                 <Pencil className="h-4 w-4" />
               </Button>
@@ -147,6 +152,8 @@ export function FlavorCard({
               </Button>
             </div>
           </div>
+
+          <FlavorBasesSummary flavor={flavor} stores={stores} />
 
           {/* Disponibilidad y Precios por Tienda */}
           <div className="mt-5">

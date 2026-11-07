@@ -8,6 +8,7 @@ import { Header } from "@/components/header"
 import type { Flavor } from "@/lib/types"
 import { Footer } from "@/components/footer"
 import { getFlavorImageSrc } from "@/lib/image-utils"
+import { sortFlavors } from '@/lib/flavor-catalog'
 
 
 function useInView<T extends HTMLElement>() {
@@ -323,8 +324,8 @@ export default function FlavorsPage() {
                     )
                 )
 
-                setFlavorsHappyCheese(happyCheeseFlavors)
-                setFlavorsHappyCheeseLux(happyCheeseLuxFlavors)
+                setFlavorsHappyCheese(sortFlavors(happyCheeseFlavors, 'happycheese'))
+                setFlavorsHappyCheeseLux(sortFlavors(happyCheeseLuxFlavors, 'happycheese-lux'))
             }
         } catch (error) {
             console.error("Error fetching flavors:", error)

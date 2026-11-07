@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { DEFAULT_PICKUP_SETTINGS } from '@/lib/date-utils'
+import { getStoreReviewUrl } from '@/lib/store-reviews'
 import type { Store, StorePickupSettings } from '@/lib/types'
 import { X } from 'lucide-react'
 
@@ -64,7 +65,7 @@ export function StoreDialog({ open, onOpenChange, store, onSave, mode }: StoreDi
 
   useEffect(() => {
     if (mode === 'edit' && store) {
-      setFormData(store)
+      setFormData({ ...store, googleReviewUrl: getStoreReviewUrl(store.id, store.googleReviewUrl) || '' })
     } else {
       setFormData(INITIAL_STORE)
     }
@@ -149,6 +150,11 @@ export function StoreDialog({ open, onOpenChange, store, onSave, mode }: StoreDi
                 Información principal
               </p>
               <div className="grid gap-5">
+                <div className="space-y-2">
+                  <Label htmlFor="store-google-review">Enlace de reseñas de Google</Label>
+                  <Input id="store-google-review" type="url" placeholder="https://g.page/r/.../review" value={formData.googleReviewUrl || ''} onChange={event => setFormData(prev => ({ ...prev, googleReviewUrl: event.target.value.trim() }))} />
+                  <p className="text-xs text-muted-foreground">Enlace de “Pedir reseñas” del perfil de esta tienda. Se incluye en el correo de confirmación del cliente.</p>
+                </div>
                 <div className="space-y-2">
                   <Label
                     htmlFor="store-name"
@@ -292,7 +298,7 @@ export function StoreDialog({ open, onOpenChange, store, onSave, mode }: StoreDi
                     <Input
                       id="pickup-min-notice"
                       type="number"
-                      min={0}
+                      min={36}
                       value={pickupSettings.minNoticeHours}
                       onChange={(e) =>
                         updatePickupSettings({ minNoticeHours: Number(e.target.value) })

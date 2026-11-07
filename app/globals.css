@@ -516,3 +516,14 @@
 [data-slot="sheet-content"][data-side="left"][data-state="closed"] {
   animation: slideOutToLeft 400ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
+@keyframes order-notice-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.order-notice-track { animation: order-notice-scroll 65s linear infinite; }
+.order-notice-static { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .order-notice-track { animation: none; }
+  .order-notice-window { display: none; }
+  .order-notice-static { display: block; }
+}

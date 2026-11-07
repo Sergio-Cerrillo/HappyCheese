@@ -173,6 +173,7 @@ export function OrderCard({ order, onStatusChange }: OrderCardProps) {
                   <div className="min-w-0 flex-1">
                     <p className="break-words text-sm font-medium text-[#383836]">{item.flavorName}</p>
                     <p className="mt-0.5 text-xs text-[#797166]">{PORTION_LABELS[item.portion] || item.portion}</p>
+                    {item.customBase && <p className="mt-1 text-xs font-medium text-[#625c52]">Base: {item.customBase.name} (+{item.customBase.surcharge.toFixed(2)} €/ud.)</p>}
                   </div>
                   <span className="shrink-0 text-sm font-medium tabular-nums text-[#383836]">{money(item.price * item.quantity)}</span>
                 </li>

@@ -2,7 +2,7 @@ import { addDays, addHours, isAfter, isBefore, isEqual } from 'date-fns'
 import type { Store, StorePickupSettings } from './types'
 
 export const DEFAULT_PICKUP_SETTINGS: Required<StorePickupSettings> = {
-  minNoticeHours: 34,
+  minNoticeHours: 36,
   maxAdvanceDays: 365,
   pickupStart: '10:00',
   pickupEnd: '20:00',
@@ -46,7 +46,7 @@ export function getPickupSettings(store?: PickupStoreInput): Required<StorePicku
   return {
     ...fallback,
     ...settings,
-    minNoticeHours: Math.max(0, Number(settings?.minNoticeHours ?? fallback.minNoticeHours)),
+    minNoticeHours: Math.max(DEFAULT_PICKUP_SETTINGS.minNoticeHours, Number(settings?.minNoticeHours ?? fallback.minNoticeHours)),
     maxAdvanceDays: Math.max(1, Number(settings?.maxAdvanceDays ?? fallback.maxAdvanceDays)),
     timeSlotIntervalMinutes: Math.max(
       15,

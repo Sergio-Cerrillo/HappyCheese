@@ -106,10 +106,10 @@ export function OrdersTab({ orders, onStatusChange }: OrdersTabProps) {
         {/* Tabs de Tiendas */}
         <div className="mb-5">
           <Tabs value={storeFilter} onValueChange={setStoreFilter} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-[rgba(56,56,54,0.06)] rounded-xl p-1">
+            <TabsList aria-label="Filtrar pedidos por tienda" className="flex h-auto w-full flex-wrap gap-1 bg-[rgba(56,56,54,0.06)] rounded-xl p-1">
               <TabsTrigger
                 value="todas"
-                className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-[rgb(56,56,54)] data-[state=active]:shadow-sm"
+                className="h-auto min-h-11 min-w-24 flex-1 rounded-lg px-3 py-2 text-xs whitespace-normal data-[state=active]:bg-white data-[state=active]:text-[rgb(56,56,54)] data-[state=active]:shadow-sm sm:text-sm"
               >
                 Todas las tiendas
               </TabsTrigger>
@@ -119,7 +119,7 @@ export function OrdersTab({ orders, onStatusChange }: OrdersTabProps) {
                   <TabsTrigger
                     key={storeId}
                     value={storeId}
-                    className="rounded-lg data-[state=active]:bg-white data-[state=active]:text-[rgb(56,56,54)] data-[state=active]:shadow-sm"
+                    className="h-auto min-h-11 min-w-24 flex-1 rounded-lg px-3 py-2 text-xs whitespace-normal data-[state=active]:bg-white data-[state=active]:text-[rgb(56,56,54)] data-[state=active]:shadow-sm sm:text-sm"
                   >
                     {storeName}
                   </TabsTrigger>

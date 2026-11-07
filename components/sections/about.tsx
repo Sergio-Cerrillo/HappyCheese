@@ -2,30 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
-import { Heart, Leaf, Award, Clock } from 'lucide-react'
-
-const features = [
-  {
-    icon: Heart,
-    title: 'Pasion Artesanal',
-    description: 'Cada tarta esta elaborada a mano con dedicacion y amor por nuestros maestros pasteleros.'
-  },
-  {
-    icon: Leaf,
-    title: 'Ingredientes Premium',
-    description: 'Solo utilizamos queso crema de primera calidad, huevos de gallinas camperas y productos locales.'
-  },
-  {
-    icon: Award,
-    title: 'Recetas Exclusivas',
-    description: 'Nuestras recetas han sido perfeccionadas durante anos para lograr el equilibrio perfecto.'
-  },
-  {
-    icon: Clock,
-    title: 'Frescura Garantizada',
-    description: 'Horneamos cada dia para garantizar que siempre disfrutes de una tarta recien hecha.'
-  }
-]
+import { aboutFeatures as features } from '@/components/sections/about-features'
 
 export function AboutSection() {
   const [isVisible, setIsVisible] = useState(false)

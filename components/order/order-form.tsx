@@ -28,25 +28,26 @@ import {
   Plus,
   Trash2,
   Loader2,
-  Calendar,
   Check,
   Users,
+  Cookie,
 } from 'lucide-react'
 import type { Store, Flavor, OrderItem, PortionType } from '@/lib/types'
 import {
-  getMinPickupDate,
-  getMaxPickupDate,
-  formatDateForInput,
-  getPickupSettings,
-  getPickupTimeOptions,
   getPickupValidationMessage,
-  isClosedPickupDate,
   isValidPickupDate,
 } from '@/lib/date-utils'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { getFlavorImageSrc } from '@/lib/image-utils'
-import { Badge } from '@/components/ui/badge'
+import { getCustomBases, getItemKey, getBaseDescription } from '@/lib/order-items'
+import type { CustomBaseOption } from '@/lib/types'
+import { OrderIntro } from './order-intro'
+import { useFlavorCatalog } from '@/hooks/use-flavor-catalog'
+import { sortFlavors } from '@/lib/flavor-catalog'
+import { CustomBaseSelector } from './custom-base-selector'
+import { PickupScheduler } from './pickup-scheduler'
+import { StoreBaseNote } from './store-base-note'
 
 type Step = 'store' | 'flavors' | 'details' | 'confirm'
 
@@ -95,14 +96,17 @@ const sectionTitleClass =
 export function OrderForm() {
   const router = useRouter()
   const formTopRef = useRef<HTMLDivElement>(null)
+  const navigationRef = useRef<HTMLDivElement>(null)
+  const [navigationVisible, setNavigationVisible] = useState(false)
   const [step, setStep] = useState<Step>('store')
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
 
   const [stores, setStores] = useState<Store[]>([])
-  const [flavors, setFlavors] = useState<Flavor[]>([])
+  const { flavors, refreshFlavors } = useFlavorCatalog()
   const [selectedFlavor, setSelectedFlavor] = useState<Flavor | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [selectedBases, setSelectedBases] = useState<Partial<Record<PortionType, string>>>({})
 
   const [selectedStore, setSelectedStore] = useState<string>('')
   const [cart, setCart] = useState<OrderItem[]>([])
@@ -120,6 +124,12 @@ export function OrderForm() {
   }, [])
 
   useEffect(() => {
+    if (step === 'flavors') {
+      refreshFlavors().catch(() => toast.error('No se han podido actualizar los sabores. Inténtalo de nuevo.'))
+    }
+  }, [step, refreshFlavors])
+
+  useEffect(() => {
     // Ejecutar el scroll cuando el nuevo paso ya está renderizado
     requestAnimationFrame(() => {
       formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -129,15 +139,22 @@ export function OrderForm() {
     })
   }, [step])
 
+  useEffect(() => {
+    const navigation = navigationRef.current
+    if (!navigation) return
+    const observer = new IntersectionObserver(([entry]) => setNavigationVisible(entry.isIntersecting), { threshold: 0.5 })
+    observer.observe(navigation)
+    return () => observer.disconnect()
+  }, [loading, step])
+
   async function loadData() {
     try {
-      const [storesRes, flavorsRes] = await Promise.all([
-        fetch('/api/stores'),
-        fetch('/api/flavors'),
+      const [storesRes] = await Promise.all([
+        fetch('/api/stores', { cache: 'no-store' }),
+        refreshFlavors(),
       ])
 
       if (storesRes.ok) setStores(await storesRes.json())
-      if (flavorsRes.ok) setFlavors(await flavorsRes.json())
     } catch (error) {
       console.error('Error loading data:', error)
       toast.error('Error al cargar datos')
@@ -148,73 +165,34 @@ export function OrderForm() {
 
   const selectedStoreData = stores.find((s) => s.id === selectedStore)
 
-  const availableFlavors = flavors.filter((f) => {
+  const availableFlavors = sortFlavors(flavors.filter((f) => {
     const availability = f.availability.find((a) => a.storeId === selectedStore)
     return f.active && availability && availability.portions.length > 0
-  })
+  }), selectedStore)
 
-  const addToCart = (flavor: Flavor, portion: PortionType) => {
-    const price = getFlavorPrice(flavor, portion, selectedStore)
-    setCart((prev) => {
-      const existing = prev.find(
-        (item) => item.flavorId === flavor.id && item.portion === portion
-      )
-      if (existing) {
-        return prev.map((item) =>
-          item.flavorId === flavor.id && item.portion === portion
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      }
-      return [
-        ...prev,
-        {
-          flavorId: flavor.id,
-          flavorName: flavor.name,
-          portion,
-          quantity: 1,
-          price,
-        },
-      ]
+  const addToCart = (flavor: Flavor, portion: PortionType, base?: CustomBaseOption) => {
+    const price = Math.round((getFlavorPrice(flavor, portion, selectedStore) + (base?.surcharge || 0)) * 100) / 100
+    const customBase = base ? { id: base.id, name: base.name, surcharge: base.surcharge } : undefined
+    const key = getItemKey({ flavorId: flavor.id, portion, customBase })
+    setCart(previous => {
+      const existing = previous.find(item => getItemKey(item) === key)
+      if (existing) return previous.map(item => getItemKey(item) === key ? { ...item, quantity: item.quantity + 1 } : item)
+      return [...previous, { flavorId: flavor.id, flavorName: flavor.name, portion, quantity: 1, price, ...(customBase ? { customBase } : {}) }]
     })
     toast.success(`${flavor.name} (${PORTION_LABELS[portion]}) añadida al pedido`)
   }
 
-  const updateQuantity = (
-    flavorId: string,
-    portion: PortionType,
-    delta: number
-  ) => {
-    setCart((prev) => {
-      return prev
-        .map((item) => {
-          if (item.flavorId === flavorId && item.portion === portion) {
-            const newQty = item.quantity + delta
-            return newQty > 0 ? { ...item, quantity: newQty } : item
-          }
-          return item
-        })
-        .filter((item) => item.quantity > 0)
-    })
+  const updateQuantity = (flavorId: string, portion: PortionType, delta: number, customBase?: OrderItem['customBase']) => {
+    const key = getItemKey({ flavorId, portion, customBase })
+    setCart(previous => previous.map(item => getItemKey(item) === key ? { ...item, quantity: item.quantity + delta } : item).filter(item => item.quantity > 0))
   }
 
-  const removeFromCart = (flavorId: string, portion: PortionType) => {
-    setCart((prev) =>
-      prev.filter(
-        (item) => !(item.flavorId === flavorId && item.portion === portion)
-      )
-    )
+  const removeFromCart = (target: OrderItem) => {
+    setCart(previous => previous.filter(item => getItemKey(item) !== getItemKey(target)))
     toast.info('Producto eliminado del pedido')
   }
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const pickupSettings = getPickupSettings(selectedStoreData)
-  const minDate = formatDateForInput(getMinPickupDate(selectedStoreData))
-  const maxDate = formatDateForInput(getMaxPickupDate(selectedStoreData))
-  const pickupTimeOptions = getPickupTimeOptions(
-    selectedStoreData,
-    customerInfo.pickupDate
-  )
 
   function isValidEmail(email: string): boolean {
     // Simple regex for email validation
@@ -375,7 +353,8 @@ export function OrderForm() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className={cn('space-y-8', cart.length > 0 && step !== 'store' && 'pb-28')}>
+      {step === 'store' && <OrderIntro />}
       <div ref={formTopRef} />
       {/* Progress */}
       <div className={`${shellCardClass} px-5 py-6 md:px-8`}>
@@ -449,7 +428,14 @@ export function OrderForm() {
             ) : (
               <RadioGroup
                 value={selectedStore}
-                onValueChange={setSelectedStore}
+                onValueChange={storeId => {
+                  if (storeId === selectedStore) return
+                  setSelectedStore(storeId)
+                  setCart([])
+                  setSelectedBases({})
+                  setCustomerInfo(previous => ({ ...previous, pickupDate: '', pickupTime: '' }))
+                  if (cart.length) toast.info('Al cambiar de tienda, elige de nuevo tus tartas disponibles')
+                }}
                 className="grid gap-4 md:grid-cols-2"
               >
                 {stores.map((store) => (
@@ -501,9 +487,10 @@ export function OrderForm() {
                   <ShoppingBag className="h-5 w-5 text-[rgb(56,56,54)]" />
                   Elige tus tartas favoritas
                 </CardTitle>
-                <p className="text-sm text-[rgba(56,56,54,0.55)]">
+                <p className="mt-1 text-xs leading-relaxed text-[rgba(56,56,54,0.65)] md:text-sm">
                   Disponibles en {selectedStoreData?.name}
                 </p>
+                <StoreBaseNote storeId={selectedStore} />
               </CardHeader>
 
               <CardContent>
@@ -522,6 +509,9 @@ export function OrderForm() {
                       const cartCount = cart
                         .filter((item) => item.flavorId === flavor.id)
                         .reduce((sum, item) => sum + item.quantity, 0)
+                      const hasCustomBases = flavor.availability
+                        .find(availability => availability.storeId === selectedStore)?.portions
+                        .some(portion => getCustomBases(flavor, selectedStore, portion).length > 0)
 
                       return (
                         <button
@@ -529,6 +519,7 @@ export function OrderForm() {
                           type="button"
                           onClick={() => {
                             setSelectedFlavor(flavor)
+                            setSelectedBases({})
                             setIsDrawerOpen(true)
                           }}
                           className="group relative aspect-square overflow-hidden rounded-2xl bg-muted/30 transition-all duration-300 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
@@ -547,6 +538,9 @@ export function OrderForm() {
 
                           {/* Content */}
                           <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4">
+                            {hasCustomBases && <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/95 px-2 py-1 text-[9px] font-medium tracking-wide text-[#383836] sm:text-[10px]">
+                              <Cookie className="h-3 w-3" aria-hidden="true" /> Elige tu base
+                            </span>}
                             <h3 className="text-sm font-medium text-white sm:text-base text-balance">
                               {flavor.name}
                             </h3>
@@ -575,7 +569,7 @@ export function OrderForm() {
 
             {/* Drawer for portion selection */}
             <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-              <DrawerContent className="max-h-[85vh]">
+              <DrawerContent className="max-h-[90dvh] rounded-t-[28px] bg-[#f8f7f4] data-[vaul-drawer-direction=bottom]:max-h-[90dvh] data-[vaul-drawer-direction=bottom]:rounded-t-[28px]">
                 {selectedFlavor && (() => {
                   const storeAvailability = selectedFlavor.availability.find(
                     (a) => a.storeId === selectedStore
@@ -584,116 +578,85 @@ export function OrderForm() {
 
                   return (
                     <>
-                      <DrawerHeader className="pb-0">
-                        <div className="mx-auto mb-4 h-32 w-32 overflow-hidden rounded-2xl sm:h-40 sm:w-40">
-                          <Image
-                            src={getFlavorImageSrc(selectedFlavor, 'thumb')}
-                            alt={selectedFlavor.name}
-                            width={160}
-                            height={160}
-                            className="h-full w-full object-cover"
-                            quality={78}
-                          />
+                      <DrawerHeader className="shrink-0 border-b border-[#e8e5df] px-5 py-4 md:px-7">
+                        <div className="mx-auto flex w-full max-w-2xl items-center gap-4 text-left">
+                          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl">
+                            <Image src={getFlavorImageSrc(selectedFlavor, 'thumb')} alt={selectedFlavor.name} fill className="object-cover" sizes="80px" quality={78} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="mb-1 text-[9px] uppercase tracking-[0.2em] text-[#8b8377]">Tu próxima favorita</p>
+                            <DrawerTitle className="font-bebas text-3xl font-normal leading-none text-[#383836]">{selectedFlavor.name}</DrawerTitle>
+                            <DrawerDescription className="mt-2 line-clamp-2 text-xs leading-relaxed text-[#797166]">{selectedFlavor.description}</DrawerDescription>
+                          </div>
                         </div>
-                        <DrawerTitle className="text-xl">{selectedFlavor.name}</DrawerTitle>
-                        <DrawerDescription className="text-balance">
-                          {selectedFlavor.description}
-                        </DrawerDescription>
                       </DrawerHeader>
 
-                      <div className="flex-1 overflow-auto px-4 py-6">
-                        <p className="mb-4 text-center text-sm font-medium text-muted-foreground">
-                          Selecciona tamaño y cantidad
-                        </p>
-                        <div className="space-y-3">
+                      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 md:px-7" data-vaul-no-drag="">
+                        <div className="mx-auto max-w-2xl space-y-4">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-[#797166]">Elige el tamaño y hazla tuya</p>
                           {availablePortions.map((portion) => {
+                            const bases = getCustomBases(selectedFlavor, selectedStore, portion)
+                            const base = bases.find(option => option.id === selectedBases[portion])
                             const inCart = cart.find(
                               (item) =>
                                 item.flavorId === selectedFlavor.id &&
-                                item.portion === portion
+                                item.portion === portion && (item.customBase?.id || '') === (base?.id || '')
                             )
-                            const price = getFlavorPrice(selectedFlavor, portion, selectedStore)
+                            const price = getFlavorPrice(selectedFlavor, portion, selectedStore) + (base?.surcharge || 0)
 
                             return (
-                              <div
-                                key={portion}
-                                className={cn(
-                                  'flex items-center justify-between rounded-xl border-2 p-4 transition-all duration-200',
-                                  inCart
-                                    ? 'border-foreground bg-foreground/5'
-                                    : 'border-border hover:border-foreground/30'
-                                )}
-                              >
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-medium">
-                                      {PORTION_LABELS[portion]}
-                                    </span>
-                                    {portion === 'mediana' && (
-                                      <Badge variant="secondary" className="text-xs flex items-center gap-1 bg-[rgba(56,56,54,0.08)] text-[rgb(56,56,54)] hover:bg-[rgba(56,56,54,0.12)]">
-                                        <Users className="h-3 w-3" />
-                                        8 personas
-                                      </Badge>
-                                    )}
-                                    {portion === 'grande' && (
-                                      <Badge variant="secondary" className="text-xs flex items-center gap-1 bg-[rgba(56,56,54,0.08)] text-[rgb(56,56,54)] hover:bg-[rgba(56,56,54,0.12)]">
-                                        <Users className="h-3 w-3" />
-                                        14 personas
-                                      </Badge>
-                                    )}
-                                    {inCart && (
-                                      <Check className="h-4 w-4 text-foreground" />
-                                    )}
+                              <section key={portion} aria-label={`Formato ${PORTION_LABELS[portion]}`} className={cn(
+                                'space-y-4 rounded-[22px] border bg-white/70 p-4 transition-colors sm:p-5',
+                                inCart ? 'border-[#b7ae9d] shadow-[0_4px_18px_rgba(56,56,54,0.04)]' : 'border-[#e5e1d8]'
+                              )}>
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex flex-wrap items-center gap-2.5">
+                                    <h3 className="font-bebas text-2xl font-normal text-[#383836]">{PORTION_LABELS[portion]}</h3>
+                                    {(portion === 'mediana' || portion === 'grande') && <span className="inline-flex items-center gap-1.5 rounded-full bg-[#efede7] px-2.5 py-1 text-[10px] text-[#797166]">
+                                      <Users className="h-3 w-3" aria-hidden="true" /> {portion === 'mediana' ? '8 personas' : '14 personas'}
+                                    </span>}
                                   </div>
-                                  <span className="text-lg font-semibold">
-                                    {price.toFixed(2)}€
-                                  </span>
+                                  {inCart && <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#383836] px-2 py-1 text-[9px] text-white"><Check className="h-3 w-3" /> En tu pedido</span>}
                                 </div>
 
-                                {inCart ? (
-                                  <div className="flex items-center gap-3">
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        updateQuantity(selectedFlavor.id, portion, -1)
-                                      }
-                                      className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-border transition-colors hover:border-foreground hover:bg-foreground hover:text-background"
-                                    >
+                                {bases.length > 0 && <CustomBaseSelector
+                                  options={bases}
+                                  value={selectedBases[portion] || ''}
+                                  portion={PORTION_LABELS[portion]}
+                                  onChange={value => setSelectedBases(previous => ({ ...previous, [portion]: value }))}
+                                />}
+
+                                <div className="flex items-end justify-between gap-3 border-t border-[#e8e5df] pt-4">
+                                  <div className="min-w-0">
+                                    <p className="mb-1 text-[9px] uppercase tracking-[0.12em] text-[#8b8377]">Precio por tarta</p>
+                                    <p className="text-xl font-semibold tabular-nums tracking-tight text-[#383836]">{price.toFixed(2)} €</p>
+                                    {base && <p className="mt-1 max-w-44 text-[10px] leading-relaxed text-[#797166]">Incluye +{base.surcharge.toFixed(2)} € de base personalizada</p>}
+                                  </div>
+                                  {inCart ? <div className="flex shrink-0 items-center gap-2 rounded-full border border-[#e5e1d8] bg-white p-1">
+                                    <button type="button" aria-label={`Quitar una tarta ${PORTION_LABELS[portion].toLowerCase()}`} onClick={() => updateQuantity(selectedFlavor.id, portion, -1, inCart.customBase)} className="flex h-10 w-10 items-center justify-center rounded-full text-[#383836] transition-colors hover:bg-[#f0ede7]">
                                       <Minus className="h-4 w-4" />
                                     </button>
-                                    <span className="w-6 text-center font-semibold">
-                                      {inCart.quantity}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        updateQuantity(selectedFlavor.id, portion, 1)
-                                      }
-                                      className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-background transition-opacity hover:opacity-80"
-                                    >
+                                    <span className="w-5 text-center text-sm font-semibold tabular-nums text-[#383836]">{inCart.quantity}</span>
+                                    <button type="button" aria-label={`Añadir una tarta ${PORTION_LABELS[portion].toLowerCase()}`} onClick={() => updateQuantity(selectedFlavor.id, portion, 1, inCart.customBase)} className="flex h-10 w-10 items-center justify-center rounded-full bg-[#383836] text-white transition-colors hover:bg-[#4a4a46]">
                                       <Plus className="h-4 w-4" />
                                     </button>
-                                  </div>
-                                ) : (
-                                  <Button
-                                    type="button"
-                                    onClick={() => addToCart(selectedFlavor, portion)}
-                                    variant="outline"
-                                    className="rounded-full px-5"
-                                  >
-                                    Añadir
-                                  </Button>
-                                )}
-                              </div>
+                                  </div> : <Button type="button" onClick={() => addToCart(selectedFlavor, portion, base)} className="min-h-11 shrink-0 gap-1.5 rounded-xl bg-[#383836] px-4 text-xs text-white hover:bg-[#4a4a46]">
+                                    <Plus className="h-3.5 w-3.5" /> Añadir al pedido
+                                  </Button>}
+                                </div>
+                              </section>
                             )
                           })}
                         </div>
                       </div>
 
-                      <DrawerFooter className="border-t border-border pt-4">
+                      <DrawerFooter className="shrink-0 border-t border-[#e5e1d8] bg-white/95 px-5 py-3 backdrop-blur-xl md:px-7">
+                        {cart.length > 0 && <Button onClick={() => { setIsDrawerOpen(false); nextStep() }} className="mx-auto min-h-12 w-full max-w-2xl rounded-xl bg-[rgb(56,56,54)] text-sm text-white hover:bg-[rgba(56,56,54,0.88)]">
+                          Continuar · {total.toFixed(2)} € <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>}
                         <DrawerClose asChild>
-                          <Button className="w-full rounded-xl py-6 text-base bg-[rgb(56,56,54)] hover:bg-[rgba(56,56,54,0.88)] text-white shadow-[0_8px_20px_rgba(56,56,54,0.18)] transition-all duration-300">
-                            Listo
+                          <Button variant="outline" className="mx-auto min-h-10 w-full max-w-2xl rounded-xl border-[#e5e1d8] bg-white text-xs">
+                            Seguir eligiendo
                           </Button>
                         </DrawerClose>
                       </DrawerFooter>
@@ -721,7 +684,7 @@ export function OrderForm() {
                   <div className="space-y-4">
                     {cart.map((item) => (
                       <div
-                        key={`${item.flavorId}-${item.portion}`}
+                        key={getItemKey(item)}
                         className="flex items-start justify-between gap-3"
                       >
                         <div className="min-w-0 flex-1">
@@ -731,6 +694,7 @@ export function OrderForm() {
                           <p className="text-xs text-[rgba(56,56,54,0.48)]">
                             {PORTION_LABELS[item.portion]} × {item.quantity}
                           </p>
+                          {item.customBase && <p className="mt-2 inline-flex items-start gap-1.5 rounded-lg border border-[#e5e1d8] bg-[#f5f3ed] px-2 py-1.5 text-[10px] leading-relaxed text-[#797166]"><Cookie className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />{getBaseDescription(item)}</p>}
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -742,8 +706,9 @@ export function OrderForm() {
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7 rounded-full"
+                            aria-label={`Eliminar ${item.flavorName}${item.customBase ? ` con base ${item.customBase.name}` : ''}`}
                             onClick={() =>
-                              removeFromCart(item.flavorId, item.portion)
+                              removeFromCart(item)
                             }
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -826,74 +791,12 @@ export function OrderForm() {
               />
             </div>
 
-            <div className="space-y-4 rounded-[22px] border border-[rgba(56,56,54,0.08)] bg-[rgba(56,56,54,0.03)] p-5">
-              <div className="flex items-center gap-2 text-sm text-[rgba(56,56,54,0.58)]">
-                <Calendar className="h-4 w-4" />
-                <span>
-                  Recogida ({pickupSettings.minNoticeHours}h de antelación,
-                  horario {pickupSettings.pickupStart}-{pickupSettings.pickupEnd})
-                </span>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="pickupDate">Fecha de recogida*</Label>
-                  <Input
-                    id="pickupDate"
-                    type="date"
-                    min={minDate}
-                    max={maxDate}
-                    value={customerInfo.pickupDate}
-                    onChange={(e) =>
-                      setCustomerInfo((prev) => ({
-                        ...prev,
-                        pickupDate: e.target.value,
-                        pickupTime: '',
-                      }))
-                    }
-                    required
-                    className="rounded-xl border-[rgba(56,56,54,0.1)] bg-white/80"
-                  />
-                  {customerInfo.pickupDate &&
-                    isClosedPickupDate(customerInfo.pickupDate, selectedStoreData) && (
-                      <p className="text-sm text-red-600">
-                        Esta tienda no acepta recogidas ese día.
-                      </p>
-                    )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Hora de recogida*</Label>
-                  <div className="grid grid-cols-4 gap-2 md:grid-cols-5 lg:grid-cols-6">
-                    {pickupTimeOptions.map((value) => {
-                      const selected = customerInfo.pickupTime === value
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          className={cn(
-                            'rounded-lg border px-3 py-2 text-sm font-medium transition-all',
-                            selected
-                              ? 'bg-[rgb(56,56,54)] text-white border-[rgb(56,56,54)] shadow'
-                              : 'bg-white/80 text-[rgb(56,56,54)] border-[rgba(56,56,54,0.12)] hover:bg-[rgba(56,56,54,0.08)]'
-                          )}
-                          onClick={() =>
-                            setCustomerInfo((prev) => ({ ...prev, pickupTime: value }))
-                          }
-                        >
-                          {value}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  {customerInfo.pickupDate && pickupTimeOptions.length === 0 && (
-                    <p className="text-sm text-red-600">
-                      No hay horas disponibles para esa fecha.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
+            <PickupScheduler
+              store={selectedStoreData}
+              date={customerInfo.pickupDate}
+              time={customerInfo.pickupTime}
+              onChange={(pickupDate, pickupTime) => setCustomerInfo(previous => ({ ...previous, pickupDate, pickupTime }))}
+            />
 
             <div className="space-y-2">
               <Label htmlFor="notes">Alergias e información relevante(opcional)</Label>
@@ -961,11 +864,12 @@ export function OrderForm() {
               <div className="space-y-2">
                 {cart.map((item) => (
                   <div
-                    key={`${item.flavorId}-${item.portion}`}
+                    key={getItemKey(item)}
                     className="flex justify-between gap-3 text-sm"
                   >
                     <span className="text-[rgba(56,56,54,0.72)]">
                       {item.quantity}x {item.flavorName} ({PORTION_LABELS[item.portion]})
+                      {item.customBase && <span className="mt-1 block text-xs">{getBaseDescription(item)}</span>}
                     </span>
                     <span className="font-semibold text-[rgb(56,56,54)]">
                       {(item.price * item.quantity).toFixed(2)}€
@@ -1016,7 +920,7 @@ export function OrderForm() {
       )}
 
       {/* Navigation */}
-      <div className="flex justify-between gap-4">
+      <div ref={navigationRef} className="flex justify-between gap-4">
         {step !== 'store' ? (
           <Button
             variant="outline"
@@ -1074,6 +978,17 @@ export function OrderForm() {
           )}
         </div>
       </div>
+      {cart.length > 0 && step !== 'store' && !isDrawerOpen && <div className={cn('fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(12px,env(safe-area-inset-bottom))] pt-2 md:px-6', navigationVisible && 'md:hidden')}>
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 rounded-2xl border border-white/60 bg-white/95 px-4 py-3 text-foreground shadow-[0_-6px_35px_rgba(0,0,0,0.14)] backdrop-blur-xl md:px-6">
+          <div className="flex min-w-0 items-center gap-3" role="status" aria-live="polite">
+            <ShoppingBag className="h-5 w-5 shrink-0" />
+            <div><p className="text-xs text-muted-foreground">{cart.reduce((sum, item) => sum + item.quantity, 0)} {cart.reduce((sum, item) => sum + item.quantity, 0) === 1 ? 'producto' : 'productos'}</p><p className="font-semibold tabular-nums">{total.toFixed(2)} €</p></div>
+          </div>
+          <Button onClick={step === 'confirm' ? handleSubmitOrder : nextStep} disabled={processing || !canProceed()} className="min-h-11 rounded-xl bg-[rgb(56,56,54)] px-5 text-white hover:bg-[rgba(56,56,54,0.88)]">
+            {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : step === 'confirm' ? 'Proceder al pago' : 'Continuar'}<ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+      </div>}
     </div>
   )
 }

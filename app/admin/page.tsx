@@ -4,13 +4,14 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Home, LogOut, LayoutDashboard } from "lucide-react"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
+import { Home, LogOut, LayoutDashboard, RefreshCw } from "lucide-react"
 import { useAdminData } from "@/hooks/use-admin-data"
 import { useStoresManager } from "@/hooks/use-stores-manager"
 import { useFlavorsManager } from "@/hooks/use-flavors-manager"
 import { useOrdersManager } from "@/hooks/use-orders-manager"
 import { AdminStats } from "@/components/admin/AdminStats"
+import { AdminNavigation } from "@/components/admin/AdminNavigation"
 import { OrdersTab } from "@/components/admin/OrdersTab"
 import { FlavorsTab } from "@/components/admin/FlavorsTab"
 import { StoresTab } from "@/components/admin/StoresTab"
@@ -33,7 +34,7 @@ export default function AdminPage() {
   const { stores, setStores, addStore, updateStore, deleteStore } =
     useStoresManager(allStores)
 
-  const { flavors, setFlavors, addFlavor, updateFlavor, deleteFlavor } =
+  const { flavors, setFlavors, addFlavor, updateFlavor, deleteFlavor, reorderFlavors } =
     useFlavorsManager(allFlavors)
 
   const { orders, setOrders, updateOrderStatus } = useOrdersManager(allOrders)
@@ -167,133 +168,22 @@ export default function AdminPage() {
       <section className="relative z-10 px-4 pb-12 pt-8 md:px-6 md:pt-10">
         <div className="mx-auto max-w-7xl space-y-8">
           {/* Stats */}
-          <div
-            className="
-              rounded-[30px]
-              border border-[rgba(56,56,54,0.08)]
-              bg-white/56 p-4 backdrop-blur-xl
-              shadow-[0_10px_30px_rgba(0,0,0,0.04)]
-              md:p-6
-            "
-          >
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-muted-foreground" role="status">
-                {ordersSyncError || (ordersRefreshing ? 'Comprobando pagos en Stripe…' : 'Los pagos se comprueban periódicamente con Stripe.')}
+          <section aria-label="Resumen de pedidos" className="rounded-[24px] border border-[#383836]/8 bg-white/65 p-3 shadow-[0_6px_24px_rgba(56,56,54,0.035)] backdrop-blur-xl sm:rounded-[28px] sm:p-5">
+            <AdminStats orders={orders} />
+            <div className="mt-3 flex items-center justify-between gap-3 border-t border-[#e8e5df] pl-3 pt-2 sm:pl-5">
+              <p className="min-w-0 text-[10px] leading-relaxed text-[#938b7c] sm:text-xs" role="status">
+                {ordersSyncError || (ordersRefreshing ? 'Comprobando pagos…' : 'Comprobación automática de pagos')}
               </p>
-              <Button variant="outline" onClick={() => refreshOrders()} disabled={ordersRefreshing}>
-                {ordersRefreshing ? 'Actualizando…' : 'Actualizar pedidos'}
+              <Button type="button" variant="ghost" aria-label="Actualizar pedidos" title="Actualizar pedidos" onClick={() => refreshOrders()} disabled={ordersRefreshing} className="h-11 w-11 shrink-0 gap-2 rounded-xl px-2 text-[#797166] hover:bg-[#f3f1eb] hover:text-[#383836] sm:w-auto sm:px-3 sm:text-xs">
+                <RefreshCw className={`h-3.5 w-3.5 ${ordersRefreshing ? 'animate-spin' : ''}`} strokeWidth={1.5} aria-hidden="true" />
+                <span className="hidden sm:inline">{ordersRefreshing ? 'Actualizando…' : 'Actualizar pedidos'}</span>
               </Button>
             </div>
-            <AdminStats orders={orders} />
-          </div>
+          </section>
 
           {/* Tabs */}
-          <Tabs defaultValue="orders" className="space-y-6">
-            <div
-              className="
-                rounded-[28px]
-                border border-[rgba(56,56,54,0.08)]
-                bg-white/56 p-3 backdrop-blur-xl
-                shadow-[0_10px_30px_rgba(0,0,0,0.04)]
-              "
-            >
-              <TabsList
-                className="
-                  grid h-auto w-full max-w-5xl grid-cols-5
-                  rounded-2xl border border-[rgba(56,56,54,0.06)]
-                  bg-[rgba(56,56,54,0.04)] p-1.5
-                "
-              >
-                <TabsTrigger
-                  value="orders"
-                  className="
-                    rounded-xl py-3 text-sm font-medium
-                    text-[rgba(56,56,54,0.68)]
-                    transition-all duration-300
-                    hover:text-[rgb(56,56,54)]
-                    hover:bg-[rgba(56,56,54,0.04)]
-                    data-[state=active]:border
-                    data-[state=active]:border-[rgba(56,56,54,0.08)]
-                    data-[state=active]:bg-white/85
-                    data-[state=active]:text-[rgb(56,56,54)]
-                    data-[state=active]:shadow-[0_4px_18px_rgba(0,0,0,0.06)]
-                  "
-                >
-                  Pedidos
-                </TabsTrigger>
-
-                <TabsTrigger
-                  value="flavors"
-                  className="
-                    rounded-xl py-3 text-sm font-medium
-                    text-[rgba(56,56,54,0.68)]
-                    transition-all duration-300
-                    hover:text-[rgb(56,56,54)]
-                    hover:bg-[rgba(56,56,54,0.04)]
-                    data-[state=active]:border
-                    data-[state=active]:border-[rgba(56,56,54,0.08)]
-                    data-[state=active]:bg-white/85
-                    data-[state=active]:text-[rgb(56,56,54)]
-                    data-[state=active]:shadow-[0_4px_18px_rgba(0,0,0,0.06)]
-                  "
-                >
-                  Sabores
-                </TabsTrigger>
-
-                <TabsTrigger
-                  value="stores"
-                  className="
-                    rounded-xl py-3 text-sm font-medium
-                    text-[rgba(56,56,54,0.68)]
-                    transition-all duration-300
-                    hover:text-[rgb(56,56,54)]
-                    hover:bg-[rgba(56,56,54,0.04)]
-                    data-[state=active]:border
-                    data-[state=active]:border-[rgba(56,56,54,0.08)]
-                    data-[state=active]:bg-white/85
-                    data-[state=active]:text-[rgb(56,56,54)]
-                    data-[state=active]:shadow-[0_4px_18px_rgba(0,0,0,0.06)]
-                  "
-                >
-                  Tiendas
-                </TabsTrigger>
-
-                <TabsTrigger
-                  value="analytics"
-                  className="
-                    rounded-xl py-3 text-sm font-medium
-                    text-[rgba(56,56,54,0.68)]
-                    transition-all duration-300
-                    hover:text-[rgb(56,56,54)]
-                    hover:bg-[rgba(56,56,54,0.04)]
-                    data-[state=active]:border
-                    data-[state=active]:border-[rgba(56,56,54,0.08)]
-                    data-[state=active]:bg-white/85
-                    data-[state=active]:text-[rgb(56,56,54)]
-                    data-[state=active]:shadow-[0_4px_18px_rgba(0,0,0,0.06)]
-                  "
-                >
-                  Análisis
-                </TabsTrigger>
-                <TabsTrigger
-                  value="calendar"
-                  className="
-                    rounded-xl py-3 text-sm font-medium
-                    text-[rgba(56,56,54,0.68)]
-                    transition-all duration-300
-                    hover:text-[rgb(56,56,54)]
-                    hover:bg-[rgba(56,56,54,0.04)]
-                    data-[state=active]:border
-                    data-[state=active]:border-[rgba(56,56,54,0.08)]
-                    data-[state=active]:bg-white/85
-                    data-[state=active]:text-[rgb(56,56,54)]
-                    data-[state=active]:shadow-[0_4px_18px_rgba(0,0,0,0.06)]
-                  "
-                >
-                  Calendario de Pedidos
-                </TabsTrigger>
-              </TabsList>
-            </div>
+          <Tabs defaultValue="orders" className="min-w-0 space-y-6">
+            <AdminNavigation />
 
             <TabsContent value="orders" className="mt-0">
               <div
@@ -322,24 +212,15 @@ export default function AdminPage() {
                 <OrdersCalendarTab orders={orders} stores={stores} />
               </div>
             </TabsContent>
-            <TabsContent value="flavors" className="mt-0">
-              <div
-                className="
-                  rounded-[30px]
-                  border border-[rgba(56,56,54,0.08)]
-                  bg-white/58 p-4 backdrop-blur-xl
-                  shadow-[0_10px_30px_rgba(0,0,0,0.04)]
-                  md:p-6
-                "
-              >
-                <FlavorsTab
-                  flavors={flavors}
-                  stores={stores}
-                  onAdd={addFlavor}
-                  onUpdate={updateFlavor}
-                  onDelete={deleteFlavor}
-                />
-              </div>
+            <TabsContent value="flavors" className="mt-0 min-w-0">
+              <FlavorsTab
+                flavors={flavors}
+                stores={stores}
+                onAdd={addFlavor}
+                onUpdate={updateFlavor}
+                onDelete={deleteFlavor}
+                onReorder={reorderFlavors}
+              />
             </TabsContent>
 
             <TabsContent value="stores" className="mt-0">

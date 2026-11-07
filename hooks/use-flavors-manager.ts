@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
 import type { Flavor } from '@/lib/types'
+import { notifyFlavorCatalogChanged } from '@/lib/flavor-catalog'
 
 interface FlavorsManager {
   flavors: Flavor[]
@@ -8,6 +9,7 @@ interface FlavorsManager {
   addFlavor: (flavor: Partial<Flavor>) => Promise<boolean>
   updateFlavor: (flavor: Flavor) => Promise<boolean>
   deleteFlavor: (id: string) => Promise<boolean>
+  reorderFlavors: (storeId: string, ids: string[]) => Promise<boolean>
 }
 
 /**
@@ -16,6 +18,22 @@ interface FlavorsManager {
  */
 export function useFlavorsManager(initialFlavors: Flavor[] = []): FlavorsManager {
   const [flavors, setFlavors] = useState<Flavor[]>(initialFlavors)
+  const reorderFlavors = useCallback(async (storeId: string, ids: string[]) => {
+    try {
+      const response = await fetch('/api/flavors/reorder', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storeId, ids }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'No se ha podido guardar el orden')
+      setFlavors(data)
+      notifyFlavorCatalogChanged()
+      toast.success('Orden de sabores guardado')
+      return true
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error de conexión')
+      return false
+    }
+  }, [])
 
   const addFlavor = useCallback(async (flavor: Partial<Flavor>): Promise<boolean> => {
     if (!flavor.name || !flavor.description || !flavor.prices) {
@@ -33,6 +51,7 @@ export function useFlavorsManager(initialFlavors: Flavor[] = []): FlavorsManager
       if (res.ok) {
         const newFlavor = await res.json()
         setFlavors(prev => [...prev, newFlavor])
+        notifyFlavorCatalogChanged()
         toast.success('Sabor añadido correctamente')
         return true
       } else {
@@ -58,6 +77,7 @@ export function useFlavorsManager(initialFlavors: Flavor[] = []): FlavorsManager
       if (res.ok) {
         const updated = await res.json()
         setFlavors(prev => prev.map(f => f.id === updated.id ? updated : f))
+        notifyFlavorCatalogChanged()
         toast.success('Sabor actualizado')
         return true
       } else {
@@ -80,6 +100,7 @@ export function useFlavorsManager(initialFlavors: Flavor[] = []): FlavorsManager
 
       if (res.ok) {
         setFlavors(prev => prev.filter(f => f.id !== id))
+        notifyFlavorCatalogChanged()
         toast.success('Sabor eliminado')
         return true
       } else {
@@ -99,6 +120,7 @@ export function useFlavorsManager(initialFlavors: Flavor[] = []): FlavorsManager
     setFlavors,
     addFlavor,
     updateFlavor,
-    deleteFlavor
+    deleteFlavor,
+    reorderFlavors
   }
 }

@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { ChefHat, Instagram, Facebook, Mail, Phone, MapPin } from 'lucide-react'
+import { Instagram, Facebook } from 'lucide-react'
+import { FooterStores } from './footer-stores'
 
 export function Footer() {
   return (
@@ -59,35 +60,7 @@ export function Footer() {
             </nav>
           </div>
 
-          <div className="space-y-4">
-            <h3 className="font-arial uppercase text-xl font-semibold text-white">Happycheese</h3>
-            <div className="space-y-3 text-white/70">
-              <p className="flex items-start gap-2">
-                <MapPin className="h-5 w-5 mt-0.5 flex-shrink-0" />
-                Carrer de Joan Alcover 27, 07006, Palma
-              </p>
-              <p className="flex items-center gap-2">
-                <Phone className="h-5 w-5 flex-shrink-0" />
-                +34 613 808 858
-              </p>
-              <p className="text-sm">L-D: 10:00 - 20:00</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="font-arial uppercase text-xl font-semibold text-white">Happycheese LUX</h3>
-            <div className="space-y-3 text-white/70">
-              <p className="flex items-start gap-2">
-                <MapPin className="h-5 w-5 mt-0.5 flex-shrink-0" />
-                Carrer de Can Brondo 5, 07001, Palma
-              </p>
-              <p className="flex items-center gap-2">
-                <Phone className="h-5 w-5 flex-shrink-0" />
-                +34 613 808 858
-              </p>
-              <p className="text-sm">L-D: 11:00 - 19:00</p>
-            </div>
-          </div>
+          <FooterStores />
         </div>
 
         <div className="border-t border-white/20 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">

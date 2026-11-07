@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { stripe, formatAmountForStripe } from '@/lib/stripe'
-import { createOrder, getStoreById } from '@/lib/db'
+import { createOrder, getStoreById, getFlavors } from '@/lib/db'
+import { getBaseDescription, priceOrderItems } from '@/lib/order-items'
 import supabase from '@/lib/supabase-admin'
 import { getPickupValidationMessage, isValidPickupDate } from '@/lib/date-utils'
 
@@ -62,16 +63,28 @@ export async function POST(request: Request) {
       )
     }
 
+    const flavors = await getFlavors()
+    let items
+    try {
+      items = priceOrderItems(data.items, flavors, store.id)
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : 'Pedido no válido' }, { status: 400 })
+    }
+    const total = items.reduce((sum, item) => sum + Math.round(item.price * 100) * item.quantity, 0) / 100
+    if (!Number.isFinite(data.total) || Math.round(data.total * 100) !== Math.round(total * 100)) {
+      return NextResponse.json({ error: 'El precio del pedido ha cambiado. Recarga los sabores y revisa tu pedido.' }, { status: 409 })
+    }
+
     // Crear el pedido en estado "pending" (pendiente de pago)
     const order = await createOrder({
-      items: data.items,
+      items,
       storeId: data.storeId,
-      storeName: data.storeName,
+      storeName: store.name,
       customerName: data.customerName,
       customerEmail: data.customerEmail,
       customerPhone: data.customerPhone,
       notes: data.notes,
-      total: data.total,
+      total,
       status: 'pendiente',
       paymentStatus: 'pending',
       pickupDate: data.pickupDate,
@@ -81,18 +94,13 @@ export async function POST(request: Request) {
     orderId = order.id
 
     // Crear line items para Stripe
-    const lineItems = data.items.map(
-      (item: {
-        flavorName: string
-        portion: string
-        quantity: number
-        price: number
-      }) => ({
+    const lineItems = items.map(
+      (item) => ({
         price_data: {
           currency: 'eur',
           product_data: {
             name: item.flavorName,
-            description: PORTION_LABELS[item.portion] || item.portion,
+            description: [PORTION_LABELS[item.portion] || item.portion, getBaseDescription(item)].filter(Boolean).join(' · '),
           },
           unit_amount: formatAmountForStripe(item.price),
         },
@@ -114,7 +122,7 @@ export async function POST(request: Request) {
       metadata: {
         orderId: order.id,
         storeId: data.storeId,
-        storeName: data.storeName,
+        storeName: store.name,
         customerName: data.customerName,
         customerPhone: data.customerPhone,
         pickupDate: data.pickupDate,

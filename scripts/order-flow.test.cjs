@@ -106,6 +106,8 @@ function setup(overrides = {}) {
   })
   const confirmation = load('app/api/checkout/confirm/route.ts', {
     'next/server': server, '@/lib/order-payments': service,
+    '@/lib/db': { getStoreById: async () => undefined },
+    '@/lib/store-reviews': { getStoreReviewUrl: () => null },
   })
   return { order, session, state, service, intent, charge, confirmation, afterTasks,
     send: async (type = 'checkout.session.completed', object = session) => {
@@ -271,8 +273,10 @@ test('El checkout guarda un intento pendiente y marca el fallo si Stripe no crea
       } } } },
     },
     '@/lib/date-utils': { isValidPickupDate: () => true },
+    '@/lib/order-items': load('lib/order-items.ts', {}),
     '@/lib/db': {
-      getStoreById: async () => ({ active: true }),
+      getStoreById: async () => ({ id: 'store', name: 'Store', active: true }),
+      getFlavors: async () => [{ id: 'flavor', name: 'Tarta', active: true, prices: { mediana: 25 }, availability: [{ storeId: 'store', portions: ['mediana'] }] }],
       createOrder: async (data) => { order = { ...data, id: 'HC-test' }; return order },
     },
     '@/lib/supabase-admin': { default: { from: () => {
@@ -289,7 +293,7 @@ test('El checkout guarda un intento pendiente y marca el fallo si Stripe no crea
     } } },
   })
   const request = { json: async () => ({
-    items: [{ flavorName: 'Tarta', price: 25, quantity: 1 }], storeId: 'store', storeName: 'Store',
+    items: [{ flavorId: 'flavor', flavorName: 'Tarta', portion: 'mediana', price: 25, quantity: 1 }], storeId: 'store', storeName: 'Store',
     customerName: 'Test', customerEmail: 'test@example.com', customerPhone: '123',
     total: 25, pickupDate: '2026-10-20', pickupTime: '12:00',
   }) }
@@ -457,7 +461,7 @@ test('La escritura administrativa comprueba el pago y la versión dentro de la p
     in(key, values) { conditions.push([key, [...values]]); return query },
     single: async () => ({ data: null, error: new Error('Concurrent refund') }),
   }
-  const db = load('lib/db.ts', { './supabase-admin': { db: { from: () => query } } })
+  const db = load('lib/db.ts', { './supabase-admin': { db: { from: () => query } }, './flavor-catalog': load('lib/flavor-catalog.ts') })
   assert.equal(await db.updateOrder('HC-test', { status: 'completado' }, '2026-10-16T14:30:00Z'), null)
   assert.deepEqual(conditions, [
     ['id', 'HC-test'], ['updatedAt', '2026-10-16T14:30:00Z'], ['paymentStatus', ['paid', 'partially_refunded']],

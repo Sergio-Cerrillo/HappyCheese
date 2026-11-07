@@ -1,5 +1,6 @@
 import { db } from './supabase-admin'
 import type { Store, Flavor, Order, Admin, Session } from './types'
+import { sortFlavors } from './flavor-catalog'
 
 // Stores
 export async function getStores(): Promise<Store[]> {
@@ -70,9 +71,12 @@ export async function getFlavors(): Promise<Flavor[]> {
     .from('flavors')
     .select('*')
     .order('createdAt', { ascending: true })
+    .order('id', { ascending: true })
   
   if (error) throw error
-  return data || []
+  // Orden estable también durante la transición desde el esquema anterior,
+  // donde sortOrder todavía no existe. Los nuevos sabores quedan al final.
+  return sortFlavors(data || [])
 }
 
 export async function getFlavorById(id: string): Promise<Flavor | undefined> {

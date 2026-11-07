@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getFlavors, createFlavor, updateFlavor, deleteFlavor } from '@/lib/db'
 import { getSessionById } from '@/lib/db'
 import { cookies } from 'next/headers'
+import { customBasesSchema } from '@/lib/catalog-validation'
+import { sortFlavors } from '@/lib/flavor-catalog'
 
 async function checkAuth(): Promise<boolean> {
   const cookieStore = await cookies()
@@ -20,10 +22,10 @@ export async function GET(request: Request) {
     
     // Filtrar por tienda si se especifica
     if (storeId) {
-      flavors = flavors.filter(f => 
+      flavors = sortFlavors(flavors.filter(f =>
         f.active && 
         f.availability.some(a => a.storeId === storeId && a.portions.length > 0)
-      )
+      ), storeId)
     } else {
       // Para usuarios públicos, solo activos
       const isAuth = await checkAuth()
@@ -32,7 +34,7 @@ export async function GET(request: Request) {
       }
     }
     
-    return NextResponse.json(flavors)
+    return NextResponse.json(flavors, { headers: { 'Cache-Control': 'private, no-store, max-age=0' } })
   } catch (error) {
     console.error('Error fetching flavors:', error)
     return NextResponse.json(
@@ -53,6 +55,10 @@ export async function POST(request: Request) {
     }
     
     const data = await request.json()
+    const bases = customBasesSchema.safeParse(data.customBases || [])
+    if (!bases.success || (data.customBasesEnabled && !bases.data.length)) {
+      return NextResponse.json({ error: 'Completa el nombre, suplemento y tiendas de cada base' }, { status: 400 })
+    }
     
     if (!data.name || !data.description || !data.prices) {
       return NextResponse.json(
@@ -68,7 +74,9 @@ export async function POST(request: Request) {
       image: data.image || '/images/clasica.jpg',
       imageThumb: data.imageThumb || data.image || '/images/clasica.jpg',
       active: data.active ?? true,
-      availability: data.availability || []
+      availability: data.availability || [],
+      customBasesEnabled: data.customBasesEnabled === true,
+      customBases: bases.data,
     })
     
     return NextResponse.json(flavor)
@@ -92,6 +100,18 @@ export async function PUT(request: Request) {
     }
     
     const { id, ...updates } = await request.json()
+    if ('sortOrder' in updates) delete updates.sortOrder
+    if ('storeSortOrders' in updates) delete updates.storeSortOrders
+    if ('customBasesEnabled' in updates && typeof updates.customBasesEnabled !== 'boolean') {
+      return NextResponse.json({ error: 'Configuración de bases no válida' }, { status: 400 })
+    }
+    if ('customBases' in updates) {
+      const bases = customBasesSchema.safeParse(updates.customBases)
+      if (!bases.success || (updates.customBasesEnabled && !bases.data.length)) {
+        return NextResponse.json({ error: 'Completa el nombre, suplemento y tiendas de cada base' }, { status: 400 })
+      }
+      updates.customBases = bases.data
+    }
     
     if (!id) {
       return NextResponse.json(

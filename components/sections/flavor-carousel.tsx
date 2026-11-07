@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getFlavorImageSrc } from '@/lib/image-utils'
 import type { Flavor } from '@/lib/types'
+import { sortFlavors } from '@/lib/flavor-catalog'
 import useEmblaCarousel from 'embla-carousel-react'
 import { EmblaCarouselType, EmblaEventType } from 'embla-carousel'
 
@@ -40,13 +41,13 @@ export function FlavorCarousel({ flavors, storeName, storeId, reversed = false, 
   const tweenNodes = useRef<HTMLElement[]>([])
 
   // Filtrar sabores disponibles en esta tienda
-  const availableFlavors = flavors.filter(
+  const availableFlavors = sortFlavors(flavors.filter(
     (flavor) =>
       flavor.active &&
       flavor.availability.some(
         (a) => a.storeId === storeId && a.portions.length > 0
       )
-  )
+  ), storeId)
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: true,

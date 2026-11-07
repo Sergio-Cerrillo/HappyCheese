@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { getStores, createStore, updateStore, deleteStore } from '@/lib/db'
 import { getSessionById } from '@/lib/db'
 import { cookies } from 'next/headers'
+import { isGoogleReviewUrl } from '@/lib/catalog-validation'
+
+export const dynamic = 'force-dynamic'
 
 async function checkAuth(): Promise<boolean> {
   const cookieStore = await cookies()
@@ -15,7 +18,7 @@ export async function GET() {
   try {
     const stores = await getStores()
     // Solo devolver tiendas activas para usuarios públicos
-    return NextResponse.json(stores.filter(s => s.active))
+    return NextResponse.json(stores.filter(s => s.active), { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     console.error('Error fetching stores:', error)
     return NextResponse.json(
@@ -36,6 +39,9 @@ export async function POST(request: Request) {
     }
     
     const data = await request.json()
+    if (data.googleReviewUrl && !isGoogleReviewUrl(data.googleReviewUrl)) {
+      return NextResponse.json({ error: 'Usa un enlace HTTPS de Google para las reseñas' }, { status: 400 })
+    }
     
     if (!data.name || !data.address || !data.phone || !data.hours) {
       return NextResponse.json(
@@ -49,6 +55,8 @@ export async function POST(request: Request) {
       address: data.address,
       phone: data.phone,
       hours: data.hours,
+      pickupSettings: data.pickupSettings,
+      googleReviewUrl: data.googleReviewUrl?.trim() || null,
       coordinates: data.coordinates || { lat: 0, lng: 0 },
       active: data.active ?? true
     })
@@ -74,6 +82,9 @@ export async function PUT(request: Request) {
     }
     
     const { id, ...updates } = await request.json()
+    if (updates.googleReviewUrl && !isGoogleReviewUrl(updates.googleReviewUrl)) {
+      return NextResponse.json({ error: 'Usa un enlace HTTPS de Google para las reseñas' }, { status: 400 })
+    }
     
     if (!id) {
       return NextResponse.json(

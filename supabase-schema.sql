@@ -8,8 +8,9 @@ CREATE TABLE IF NOT EXISTS happycheese.stores (
   address TEXT NOT NULL,
   phone TEXT NOT NULL,
   hours TEXT NOT NULL,
+  "googleReviewUrl" TEXT,
   "pickupSettings" JSONB NOT NULL DEFAULT '{
-    "minNoticeHours": 34,
+    "minNoticeHours": 36,
     "maxAdvanceDays": 365,
     "pickupStart": "10:00",
     "pickupEnd": "20:00",
@@ -32,6 +33,10 @@ CREATE TABLE IF NOT EXISTS happycheese.flavors (
   "imageThumb" TEXT,
   active BOOLEAN DEFAULT true,
   availability JSONB NOT NULL,
+  "sortOrder" INTEGER DEFAULT 2147483647,
+  "storeSortOrders" JSONB NOT NULL DEFAULT '{}'::jsonb,
+  "customBasesEnabled" BOOLEAN NOT NULL DEFAULT false,
+  "customBases" JSONB NOT NULL DEFAULT '[]'::jsonb,
   "createdAt" TIMESTAMPTZ DEFAULT now(),
   "updatedAt" TIMESTAMPTZ DEFAULT now()
 );

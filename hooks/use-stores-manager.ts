@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
 import type { Store } from '@/lib/types'
+import { notifyStoreCatalogChanged } from '@/lib/store-catalog'
 
 interface StoresManager {
   stores: Store[]
@@ -33,6 +34,7 @@ export function useStoresManager(initialStores: Store[] = []): StoresManager {
       if (res.ok) {
         const newStore = await res.json()
         setStores(prev => [...prev, newStore])
+        notifyStoreCatalogChanged()
         toast.success('Tienda añadida correctamente')
         return true
       } else {
@@ -58,6 +60,7 @@ export function useStoresManager(initialStores: Store[] = []): StoresManager {
       if (res.ok) {
         const updated = await res.json()
         setStores(prev => prev.map(s => s.id === updated.id ? updated : s))
+        notifyStoreCatalogChanged()
         toast.success('Tienda actualizada')
         return true
       } else {
@@ -80,6 +83,7 @@ export function useStoresManager(initialStores: Store[] = []): StoresManager {
 
       if (res.ok) {
         setStores(prev => prev.filter(s => s.id !== id))
+        notifyStoreCatalogChanged()
         toast.success('Tienda eliminada')
         return true
       } else {

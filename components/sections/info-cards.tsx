@@ -1,34 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Heart, Leaf, Award, Clock } from "lucide-react"
-
-const features = [
-    {
-        icon: Heart,
-        title: "Pasión Artesanal",
-        description:
-            "Cada tarta está elaborada a mano con dedicación y amor por nuestros maestros pasteleros.",
-    },
-    {
-        icon: Leaf,
-        title: "Ingredientes Premium",
-        description:
-            "Solo utilizamos queso crema de primera calidad, huevos de gallinas camperas y productos locales.",
-    },
-    {
-        icon: Award,
-        title: "Recetas Exclusivas",
-        description:
-            "Nuestras recetas han sido perfeccionadas durante años para lograr el equilibrio perfecto.",
-    },
-    {
-        icon: Clock,
-        title: "Frescura Garantizada",
-        description:
-            "Horneamos cada día para garantizar que siempre disfrutes de una tarta recién hecha.",
-    },
-]
+import { aboutFeatures as features } from "@/components/sections/about-features"
 
 function useInView<T extends HTMLElement>() {
     const ref = useRef<T | null>(null)

@@ -13,6 +13,7 @@ export interface Store {
   address: string
   phone: string
   hours: string
+  googleReviewUrl?: string | null
   pickupSettings?: StorePickupSettings | null
   coordinates: { lat: number; lng: number }
   active: boolean
@@ -44,8 +45,19 @@ export interface Flavor {
   imageThumb?: string | null
   active: boolean
   availability: FlavorAvailability[]
+  sortOrder?: number | null
+  storeSortOrders?: Record<string, number>
+  customBasesEnabled?: boolean
+  customBases?: CustomBaseOption[]
   createdAt: string
   updatedAt: string
+}
+
+export interface CustomBaseOption {
+  id: string
+  name: string
+  surcharge: number
+  storeIds: string[]
 }
 
 export interface OrderItem {
@@ -54,6 +66,7 @@ export interface OrderItem {
   portion: PortionType
   quantity: number
   price: number
+  customBase?: { id: string; name: string; surcharge: number }
 }
 
 export interface Order {
@@ -81,6 +94,8 @@ export interface Order {
   refundedAmount?: number
   // Solo en las respuestas del panel; no se persiste en la base de datos.
   paymentSyncError?: boolean
+  // Solo en la respuesta de confirmación; configuración actual de la tienda.
+  storeReviewUrl?: string | null
 }
 
 export interface StripeAttemptDetails {

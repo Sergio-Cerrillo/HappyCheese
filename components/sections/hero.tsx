@@ -94,7 +94,7 @@ export function HeroSection() {
           className={`mt-8 text-lg md:text-xl text-white/80 font-light transition-all duration-1000 delay-400 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}
         >
-          The Art of the Cheesecake.
+          Cada tarta, una obra.
         </p>
 
         <div

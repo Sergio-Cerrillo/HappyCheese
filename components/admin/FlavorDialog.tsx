@@ -15,6 +15,9 @@ import { Switch } from '@/components/ui/switch'
 import { ImageUpload } from '@/components/ui/image-upload'
 import { AvailabilityEditor } from './availability-manager'
 import type { Flavor, Store, PortionType } from '@/lib/types'
+import { CustomBasesEditor } from './CustomBasesEditor'
+import { customBasesSchema } from '@/lib/catalog-validation'
+import { toast } from 'sonner'
 
 interface FlavorDialogProps {
   open: boolean
@@ -40,6 +43,8 @@ const INITIAL_FLAVOR: Partial<Flavor> = {
   imageThumb: '',
   active: true,
   availability: [],
+  customBasesEnabled: false,
+  customBases: [],
 }
 
 export function FlavorDialog({
@@ -64,6 +69,11 @@ export function FlavorDialog({
 
   const handleSave = async () => {
     if (isImageUploading) return
+    const bases = customBasesSchema.safeParse(formData.customBases || [])
+    if (!bases.success || (formData.customBasesEnabled && !bases.data.length)) {
+      toast.error('Añade al menos una base y completa su nombre, suplemento y tiendas')
+      return
+    }
 
     const success = await onSave(formData)
     if (success) {
@@ -283,6 +293,13 @@ export function FlavorDialog({
               />
             </div>
           </section>
+
+          <CustomBasesEditor
+            enabled={formData.customBasesEnabled || false}
+            bases={formData.customBases || []}
+            stores={stores}
+            onChange={(customBasesEnabled, customBases) => setFormData(prev => ({ ...prev, customBasesEnabled, customBases }))}
+          />
 
           {/* Estado */}
           <section>

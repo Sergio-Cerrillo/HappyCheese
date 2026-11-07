@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { MapPin, Clock, Phone, Navigation } from 'lucide-react'
-import type { Store } from '@/lib/types'
+import { useStoreCatalog } from '@/hooks/use-store-catalog'
 
 export function StoresSection({
   forceVisible = false,
@@ -14,7 +14,7 @@ export function StoresSection({
   forceVisible?: boolean
   compactTop?: boolean
 } = {}) {
-  const [stores, setStores] = useState<Store[]>([])
+  const { stores, loading, error, refreshStores } = useStoreCatalog()
   const [isVisible, setIsVisible] = useState(forceVisible)
   const sectionRef = useRef<HTMLElement>(null)
 
@@ -36,22 +36,6 @@ export function StoresSection({
 
     return () => observer.disconnect()
   }, [forceVisible])
-
-  useEffect(() => {
-    fetchStores()
-  }, [])
-
-  const fetchStores = async () => {
-    try {
-      const response = await fetch('/api/stores')
-      if (response.ok) {
-        const data = await response.json()
-        setStores(data.filter((s: Store) => s.active))
-      }
-    } catch (error) {
-      console.error('Error fetching stores:', error)
-    }
-  }
 
   return (
     <section
@@ -84,211 +68,117 @@ export function StoresSection({
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          <div
-            key="happycheese"
-            className="
-              group overflow-hidden rounded-[28px]
-              border border-[rgba(56,56,54,0.08)]
-              bg-white/60 backdrop-blur-xl
-              shadow-[0_8px_30px_rgba(0,0,0,0.06)]
-              transition-all duration-300
-              hover:-translate-y-1
-              hover:shadow-[0_14px_40px_rgba(0,0,0,0.08)]
-            "
-          >
-            <div className="relative h-64 overflow-hidden">
-              <Image
-                src="/alcover.JPG"
-                alt="Tienda HappyCheese"
-                fill
-                className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-              />
+          {loading && <p className="col-span-full py-10 text-center text-sm text-muted-foreground" role="status">Cargando tiendas…</p>}
+          {!loading && !stores.length && <div className="col-span-full py-10 text-center text-sm text-muted-foreground">
+            <p>{error ? 'No hemos podido cargar las tiendas.' : 'Próximamente tendrás más información sobre nuestras tiendas.'}</p>
+            {error && <Button type="button" variant="outline" className="mt-4 rounded-xl" onClick={() => void refreshStores()}>Volver a intentar</Button>}
+          </div>}
+          {stores.map(store => (
+            <article
+              aria-label={store.name}
+              key={store.id}
+              className="
+                group overflow-hidden rounded-[28px]
+                border border-[rgba(56,56,54,0.08)]
+                bg-white/60 backdrop-blur-xl
+                shadow-[0_8px_30px_rgba(0,0,0,0.06)]
+                transition-all duration-300
+                hover:-translate-y-1
+                hover:shadow-[0_14px_40px_rgba(0,0,0,0.08)]
+              "
+            >
+              <div className="relative h-64 overflow-hidden">
+                <Image
+                  src={store.id === 'happycheese' ? '/alcover.JPG' : ['happycheese-lux', 'happycheese_lux'].includes(store.id) ? '/brondo.JPG' : '/hc/14.jpeg'}
+                  alt={`Tienda ${store.name}`}
+                  fill
+                  className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                />
 
-              {/* degradado principal: ahora sí visible */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/18 to-transparent" />
+                {/* degradado principal: ahora sí visible */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/18 to-transparent" />
 
-              {/* brillo sutil superior, sin matar el degradado */}
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.10),transparent_32%)]" />
+                {/* brillo sutil superior, sin matar el degradado */}
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.10),transparent_32%)]" />
 
-              <div className="absolute bottom-5 left-5">
-                <h3 className="font-bebas text-2xl font-semibold text-white">
-                  HAPPYCHEESE
-                </h3>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[rgba(56,56,54,0.08)] bg-[rgba(56,56,54,0.05)]">
-                  <MapPin className="h-4 w-4 text-[rgb(56,56,54)]" />
+                <div className="absolute bottom-5 left-5">
+                  <h3 className="font-bebas text-2xl font-semibold uppercase text-white">
+                    {store.name}
+                  </h3>
                 </div>
-                <p className="text-[rgb(56,56,54)] leading-relaxed">
-                  Carrer de Joan Alcover 27, 07006, Palma
-                </p>
               </div>
 
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[rgba(56,56,54,0.08)] bg-[rgba(56,56,54,0.05)]">
-                  <Clock className="h-4 w-4 text-[rgb(56,56,54)]" />
+              <div className="p-6 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[rgba(56,56,54,0.08)] bg-[rgba(56,56,54,0.05)]">
+                    <MapPin className="h-4 w-4 text-[rgb(56,56,54)]" />
+                  </div>
+                  <p className="text-[rgb(56,56,54)] leading-relaxed">
+                    {store.address}
+                  </p>
                 </div>
-                <p className="text-[rgba(56,56,54,0.72)] leading-relaxed">
-                  L-D: 10:00 - 20:00
-                </p>
-              </div>
 
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[rgba(56,56,54,0.08)] bg-[rgba(56,56,54,0.05)]">
-                  <Phone className="h-4 w-4 text-[rgb(56,56,54)]" />
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[rgba(56,56,54,0.08)] bg-[rgba(56,56,54,0.05)]">
+                    <Clock className="h-4 w-4 text-[rgb(56,56,54)]" />
+                  </div>
+                  <p className="whitespace-pre-line text-[rgba(56,56,54,0.72)] leading-relaxed">
+                    {store.hours}
+                  </p>
                 </div>
-                <a
-                  href="tel:+34613808858"
-                  className="text-[rgb(56,56,54)] transition-colors duration-200 hover:text-[rgba(56,56,54,0.72)]"
-                >
-                  +34 613 808 858
-                </a>
-              </div>
 
-              <div className="flex gap-3 pt-4">
-                <Button
-                  asChild
-                  className="
-                    flex-1 gap-2 rounded-xl
-                    bg-[rgb(56,56,54)] text-white
-                    shadow-none transition-all duration-300
-                    hover:scale-[1.03]
-                    hover:bg-[rgba(56,56,54,0.92)]
-                  "
-                >
-                  <Link href="/pedido">Hacer pedido</Link>
-                </Button>
-
-                <Button
-                  asChild
-                  variant="outline"
-                  className="
-                    gap-2 rounded-xl border-[rgba(56,56,54,0.12)]
-                    bg-white/50 text-[rgb(56,56,54)]
-                    backdrop-blur-md transition-all duration-300
-                    hover:scale-[1.03]
-                    hover:bg-[rgba(56,56,54,0.05)]
-                    hover:text-[rgb(56,56,54)]
-                  "
-                >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[rgba(56,56,54,0.08)] bg-[rgba(56,56,54,0.05)]">
+                    <Phone className="h-4 w-4 text-[rgb(56,56,54)]" />
+                  </div>
                   <a
-                    href="https://maps.app.goo.gl/zGUDwuuKKDrUw8dY9"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={`tel:${store.phone.replace(/[^\d+]/g, '')}`}
+                    className="text-[rgb(56,56,54)] transition-colors duration-200 hover:text-[rgba(56,56,54,0.72)]"
                   >
-                    <Navigation className="h-4 w-4" />
-                    Mapa
+                    {store.phone}
                   </a>
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div
-            key="happycheeselux"
-            className="
-              group overflow-hidden rounded-[28px]
-              border border-[rgba(56,56,54,0.08)]
-              bg-white/60 backdrop-blur-xl
-              shadow-[0_8px_30px_rgba(0,0,0,0.06)]
-              transition-all duration-300
-              hover:-translate-y-1
-              hover:shadow-[0_14px_40px_rgba(0,0,0,0.08)]
-            "
-          >
-            <div className="relative h-64 overflow-hidden">
-              <Image
-                src="/brondo.JPG"
-                alt="Tienda HappyCheese LUX"
-                fill
-                className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-              />
-
-              {/* degradado principal: ahora sí visible */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/18 to-transparent" />
-
-              {/* brillo sutil superior */}
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.10),transparent_32%)]" />
-
-              <div className="absolute bottom-5 left-5">
-                <h3 className="font-bebas text-2xl font-semibold text-white">
-                  HAPPYCHEESE LUX
-                </h3>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[rgba(56,56,54,0.08)] bg-[rgba(56,56,54,0.05)]">
-                  <MapPin className="h-4 w-4 text-[rgb(56,56,54)]" />
                 </div>
-                <p className="text-[rgb(56,56,54)] leading-relaxed">
-                  Carrer de Can Brondo 5, 07001, Palma
-                </p>
-              </div>
 
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[rgba(56,56,54,0.08)] bg-[rgba(56,56,54,0.05)]">
-                  <Clock className="h-4 w-4 text-[rgb(56,56,54)]" />
-                </div>
-                <p className="text-[rgba(56,56,54,0.72)] leading-relaxed">
-                  L-D: 11:00 - 19:00
-                </p>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[rgba(56,56,54,0.08)] bg-[rgba(56,56,54,0.05)]">
-                  <Phone className="h-4 w-4 text-[rgb(56,56,54)]" />
-                </div>
-                <a
-                  href="tel:+34613808858"
-                  className="text-[rgb(56,56,54)] transition-colors duration-200 hover:text-[rgba(56,56,54,0.72)]"
-                >
-                  +34 613 808 858
-                </a>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button
-                  asChild
-                  className="
-                    flex-1 gap-2 rounded-xl
-                    bg-[rgb(56,56,54)] text-white
-                    shadow-none transition-all duration-300
-                    hover:scale-[1.03]
-                    hover:bg-[rgba(56,56,54,0.92)]
-                  "
-                >
-                  <Link href="/pedido">Hacer pedido</Link>
-                </Button>
-
-                <Button
-                  asChild
-                  variant="outline"
-                  className="
-                    gap-2 rounded-xl border-[rgba(56,56,54,0.12)]
-                    bg-white/50 text-[rgb(56,56,54)]
-                    backdrop-blur-md transition-all duration-300
-                    hover:scale-[1.03]
-                    hover:bg-[rgba(56,56,54,0.05)]
-                    hover:text-[rgb(56,56,54)]
-                  "
-                >
-                  <a
-                    href="https://maps.app.goo.gl/9iJDqgEckS2GaEcp7"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    asChild
+                    className="
+                      flex-1 gap-2 rounded-xl
+                      bg-[rgb(56,56,54)] text-white
+                      shadow-none transition-all duration-300
+                      hover:scale-[1.03]
+                      hover:bg-[rgba(56,56,54,0.92)]
+                    "
                   >
-                    <Navigation className="h-4 w-4" />
-                    Mapa
-                  </a>
-                </Button>
+                    <Link href="/pedido">Hacer pedido</Link>
+                  </Button>
+
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="
+                      gap-2 rounded-xl border-[rgba(56,56,54,0.12)]
+                      bg-white/50 text-[rgb(56,56,54)]
+                      backdrop-blur-md transition-all duration-300
+                      hover:scale-[1.03]
+                      hover:bg-[rgba(56,56,54,0.05)]
+                      hover:text-[rgb(56,56,54)]
+                    "
+                  >
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${store.name}, ${store.address}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Navigation className="h-4 w-4" />
+                      Mapa
+                    </a>
+                  </Button>
+                </div>
               </div>
-            </div>
-          </div>
+            </article>
+
+          ))}
         </div>
       </div>
     </section>
