@@ -3,7 +3,7 @@ import { Clock3 } from 'lucide-react'
 export function OrderNotice() {
   return (
     <section aria-label="Tartas por encargo" className="order-notice relative flex min-h-28 items-center overflow-hidden border-y border-white/10 bg-[#383836] text-[#f6f2e9] md:min-h-32">
-      <p className="sr-only">Preparamos tu tarta por encargo. Haz tu pedido con al menos 36 h de antelación.</p>
+      <p className="sr-only">De nuestro obrador a tu paladar. Haz tu pedido con al menos 36 h de antelación.</p>
 
       <div className="order-notice-window min-w-0 flex-1 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_24px,black_calc(100%-24px),transparent)]" aria-hidden="true">
         <div className="order-notice-track flex w-max">
@@ -13,7 +13,7 @@ export function OrderNotice() {
                 <div key={copy} className="flex shrink-0 items-center gap-8 px-6 md:gap-12 md:px-10">
                   <span className="font-serif text-[26px] font-normal italic tracking-[-0.02em] md:text-[34px]">Lo bueno lleva su tiempo.</span>
                   <span className="h-px w-8 bg-[#f6f2e9]/25 md:w-12" />
-                  <span className="text-[10px] uppercase tracking-[0.22em] text-[#f6f2e9]/70 md:text-xs">Preparamos tu tarta por encargo</span>
+                  <span className="text-[10px] uppercase tracking-[0.22em] text-[#f6f2e9]/70 md:text-xs">De nuestro obrador a tu paladar</span>
                   <span className="h-px w-8 bg-[#f6f2e9]/25 md:w-12" />
                 </div>
               ))}
@@ -23,7 +23,7 @@ export function OrderNotice() {
       </div>
 
       <div aria-hidden="true" className="order-notice-static min-w-0 flex-1 px-5 py-5 text-center">
-        <p className="font-serif text-xl italic md:text-3xl">Preparamos tu tarta por encargo.</p>
+        <p className="font-serif text-xl italic md:text-3xl">De nuestro obrador a tu paladar.</p>
       </div>
 
       <div aria-hidden="true" className="shrink-0 border-l border-[#f6f2e9]/15 px-4 text-center md:px-9">

@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     const data = await request.json()
     const bases = customBasesSchema.safeParse(data.customBases || [])
     if (!bases.success || (data.customBasesEnabled && !bases.data.length)) {
-      return NextResponse.json({ error: 'Completa el nombre, suplemento y tiendas de cada base' }, { status: 400 })
+      return NextResponse.json({ error: 'Revisa el nombre, tiendas y suplementos por tamaño de cada base' }, { status: 400 })
     }
     
     if (!data.name || !data.description || !data.prices) {
@@ -108,7 +108,7 @@ export async function PUT(request: Request) {
     if ('customBases' in updates) {
       const bases = customBasesSchema.safeParse(updates.customBases)
       if (!bases.success || (updates.customBasesEnabled && !bases.data.length)) {
-        return NextResponse.json({ error: 'Completa el nombre, suplemento y tiendas de cada base' }, { status: 400 })
+        return NextResponse.json({ error: 'Revisa el nombre, tiendas y suplementos por tamaño de cada base' }, { status: 400 })
       }
       updates.customBases = bases.data
     }

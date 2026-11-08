@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Pencil, Trash2, Store as StoreIcon, Layers3 } from 'lucide-react'
 import Image from 'next/image'
 import { getFlavorImageSrc } from '@/lib/image-utils'
+import { getCustomBases } from '@/lib/order-items'
 import type { Flavor, Store, PortionType } from '@/lib/types'
 import { FlavorBasesSummary } from './FlavorBasesSummary'
 
@@ -26,6 +27,11 @@ export function FlavorCard({
   onEdit,
   onDelete,
 }: FlavorCardProps) {
+  const hasAvailableBases = stores.some(store =>
+    (flavor.availability.find(entry => entry.storeId === store.id)?.portions || [])
+      .some(portion => getCustomBases(flavor, store.id, portion).length > 0)
+  )
+
   // Filtrar tiendas con disponibilidad válida
   const availableStores = stores
     .filter((s) => s.active)
@@ -108,7 +114,7 @@ export function FlavorCard({
                   </Badge>
                 )}
                 {!!flavor.customBases?.length && <Badge className="gap-1.5 rounded-full border-[#e0dbd0] bg-[#f2efe7] px-2.5 text-[#625c52] shadow-none">
-                  <Layers3 className="h-3 w-3" aria-hidden="true" /> {flavor.customBasesEnabled ? 'Base personalizable' : 'Base personalizable no disponible'}
+                  <Layers3 className="h-3 w-3" aria-hidden="true" /> {hasAvailableBases ? 'Base personalizable' : 'Base personalizable no disponible'}
                 </Badge>}
               </div>
 

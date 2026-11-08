@@ -71,7 +71,7 @@ export function FlavorDialog({
     if (isImageUploading) return
     const bases = customBasesSchema.safeParse(formData.customBases || [])
     if (!bases.success || (formData.customBasesEnabled && !bases.data.length)) {
-      toast.error('Añade al menos una base y completa su nombre, suplemento y tiendas')
+      toast.error('Añade al menos una base y revisa su nombre, tiendas y suplementos por tamaño')
       return
     }
 
@@ -298,6 +298,7 @@ export function FlavorDialog({
             enabled={formData.customBasesEnabled || false}
             bases={formData.customBases || []}
             stores={stores}
+            availability={formData.availability || []}
             onChange={(customBasesEnabled, customBases) => setFormData(prev => ({ ...prev, customBasesEnabled, customBases }))}
           />
 

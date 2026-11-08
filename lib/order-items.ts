@@ -1,8 +1,25 @@
-import type { Flavor, OrderItem, PortionType } from './types'
+import type { CustomBaseOption, Flavor, OrderItem, PortionType } from './types'
+
+export const BASE_PORTION_LABELS: Record<PortionType, string> = {
+  individual: 'Individual', doble: 'Doble', mediana: 'Mediana', grande: 'Grande',
+}
+
+export function getCustomBasePortionSettings(base: CustomBaseOption): NonNullable<CustomBaseOption['portionSettings']> {
+  if (base.portionSettings !== undefined) return base.portionSettings
+  return {
+    mediana: { enabled: true, surcharge: base.surcharge },
+    grande: { enabled: true, surcharge: base.surcharge },
+  }
+}
 
 export function getCustomBases(flavor: Flavor, storeId: string, portion: PortionType) {
-  if (!flavor.customBasesEnabled || !['mediana', 'grande'].includes(portion)) return []
-  return (flavor.customBases || []).filter(base => base.storeIds.includes(storeId))
+  if (!flavor.customBasesEnabled || !flavor.availability.some(entry => entry.storeId === storeId && entry.portions.includes(portion))) return []
+  return (flavor.customBases || []).flatMap(base => {
+    const setting = getCustomBasePortionSettings(base)[portion]
+    return base.storeIds.includes(storeId) && setting?.enabled
+      ? [{ ...base, surcharge: setting.surcharge }]
+      : []
+  })
 }
 
 export function getItemKey(item: Pick<OrderItem, 'flavorId' | 'portion' | 'customBase'>) {

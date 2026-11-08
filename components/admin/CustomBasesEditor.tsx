@@ -3,12 +3,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import type { CustomBaseOption, Store } from '@/lib/types'
+import { BASE_PORTION_LABELS, getCustomBasePortionSettings } from '@/lib/order-items'
+import type { CustomBaseOption, FlavorAvailability, PortionType, Store } from '@/lib/types'
 
-export function CustomBasesEditor({ enabled, bases, stores, onChange }: {
+export function CustomBasesEditor({ enabled, bases, stores, availability, onChange }: {
   enabled: boolean
   bases: CustomBaseOption[]
   stores: Store[]
+  availability: FlavorAvailability[]
   onChange: (enabled: boolean, bases: CustomBaseOption[]) => void
 }) {
   function update(id: string, patch: Partial<CustomBaseOption>) {
@@ -22,7 +24,7 @@ export function CustomBasesEditor({ enabled, bases, stores, onChange }: {
           <div>
             <p className="mb-1.5 text-[10px] uppercase tracking-[0.16em] text-[#797166]">Un toque diferente</p>
             <Label htmlFor="custom-bases-enabled" className="text-base font-medium text-[#383836]">Permitir bases personalizadas</Label>
-            <p className="mt-2 text-xs leading-relaxed text-[#797166]">Crea las bases que se podrán elegir en tartas medianas y grandes.</p>
+            <p className="mt-2 text-xs leading-relaxed text-[#797166]">Activa cada tamaño y define su suplemento de forma independiente.</p>
           </div>
         </div>
         <Switch id="custom-bases-enabled" className="data-[state=checked]:bg-[#383836]" checked={enabled} onCheckedChange={checked => onChange(checked, bases)} />
@@ -46,10 +48,6 @@ export function CustomBasesEditor({ enabled, bases, stores, onChange }: {
               <Label htmlFor={`base-name-${base.id}`}>Sabor de la base</Label>
               <Input id={`base-name-${base.id}`} className="h-11 rounded-xl border-[#e5e1d8] bg-[#faf9f6]" maxLength={100} placeholder="Ej.: Galleta de pistacho" value={base.name} onChange={event => update(base.id, { name: event.target.value })} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor={`base-price-${base.id}`}>Suplemento por tarta (€)</Label>
-              <Input id={`base-price-${base.id}`} className="h-11 rounded-xl border-[#e5e1d8] bg-[#faf9f6]" type="number" min="0" max="1000" step="0.01" value={Number.isNaN(base.surcharge) ? '' : base.surcharge} onChange={event => update(base.id, { surcharge: event.target.valueAsNumber })} />
-            </div>
             <fieldset className="space-y-2">
               <legend className="mb-2 text-sm font-medium">Tiendas donde se ofrece</legend>
               {stores.map(store => <label key={store.id} className={`flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-3 text-xs transition-colors ${base.storeIds.includes(store.id) ? 'border-[#383836]/25 bg-[#f4f2ed] text-[#383836]' : 'border-[#e9e5dc] text-[#797166]'}`}>
@@ -57,9 +55,31 @@ export function CustomBasesEditor({ enabled, bases, stores, onChange }: {
                 {store.name}
               </label>)}
             </fieldset>
+            <fieldset className="space-y-3">
+              <legend className="mb-2 text-sm font-medium text-[#383836]">Tamaños y suplementos</legend>
+              {(Object.keys(BASE_PORTION_LABELS) as PortionType[]).map(portion => {
+                const settings = getCustomBasePortionSettings(base)
+                const setting = settings[portion] || { enabled: false, surcharge: 0 }
+                const available = availability.some(entry => base.storeIds.includes(entry.storeId) && entry.portions.includes(portion))
+                const switchId = `base-${base.id}-${portion}-enabled`
+                const priceId = `base-${base.id}-${portion}-price`
+                const setSetting = (patch: Partial<typeof setting>) => update(base.id, { portionSettings: { ...settings, [portion]: { ...setting, ...patch } } })
+                return <div key={portion} className={`rounded-2xl border p-3.5 ${setting.enabled ? 'border-[#383836]/20 bg-[#f8f6f1]' : 'border-dashed border-[#e5e1d8] bg-[#faf9f6]'}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor={switchId} className="text-sm text-[#383836]">{BASE_PORTION_LABELS[portion]}</Label>
+                    <Switch id={switchId} aria-label={`Ofrecer ${BASE_PORTION_LABELS[portion]}`} checked={setting.enabled} disabled={!available && !setting.enabled} onCheckedChange={checked => setSetting({ enabled: checked })} className="data-[state=checked]:bg-[#383836]" />
+                  </div>
+                  {setting.enabled && <div className="mt-3 space-y-2">
+                    <Label htmlFor={priceId} className="text-xs text-[#797166]">Suplemento para {BASE_PORTION_LABELS[portion]} (€)</Label>
+                    <Input id={priceId} className="h-11 rounded-xl border-[#e5e1d8] bg-white" type="number" min="0" max="1000" step="0.01" value={Number.isNaN(setting.surcharge) ? '' : setting.surcharge} onChange={event => setSetting({ surcharge: event.target.valueAsNumber })} />
+                  </div>}
+                  {!available && <p className="mt-2 text-[10px] leading-relaxed text-[#938b7c]">{base.storeIds.length ? 'Este tamaño no está disponible para el sabor en las tiendas seleccionadas.' : 'Selecciona una tienda para activar este tamaño.'}</p>}
+                </div>
+              })}
+            </fieldset>
           </div>
         ))}
-        <Button type="button" variant="outline" disabled={bases.length >= 20} className="min-h-11 w-full gap-2 rounded-xl border-dashed border-[#bdb4a3] bg-white/65 text-[#383836] hover:bg-white" onClick={() => onChange(enabled, [...bases, { id: crypto.randomUUID(), name: '', surcharge: 0, storeIds: [] }])}>
+        <Button type="button" variant="outline" disabled={bases.length >= 20} className="min-h-11 w-full gap-2 rounded-xl border-dashed border-[#bdb4a3] bg-white/65 text-[#383836] hover:bg-white" onClick={() => onChange(enabled, [...bases, { id: crypto.randomUUID(), name: '', surcharge: 0, storeIds: [], portionSettings: {} }])}>
           <Plus className="h-4 w-4" /> Añadir opción de base
         </Button>
         <p className="text-xs text-muted-foreground">Solo aparece en las tiendas y tamaños donde la propia tarta esté disponible. El suplemento se suma a cada unidad.</p>

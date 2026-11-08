@@ -11,11 +11,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Drawer,
   DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerClose,
 } from '@/components/ui/drawer'
 import { toast } from 'sonner'
 import {
@@ -24,12 +19,8 @@ import {
   User,
   ArrowRight,
   ArrowLeft,
-  Minus,
-  Plus,
   Trash2,
   Loader2,
-  Check,
-  Users,
   Cookie,
 } from 'lucide-react'
 import type { Store, Flavor, OrderItem, PortionType } from '@/lib/types'
@@ -40,12 +31,12 @@ import {
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { getFlavorImageSrc } from '@/lib/image-utils'
-import { getCustomBases, getItemKey, getBaseDescription } from '@/lib/order-items'
+import { getItemKey, getBaseDescription } from '@/lib/order-items'
 import type { CustomBaseOption } from '@/lib/types'
 import { OrderIntro } from './order-intro'
 import { useFlavorCatalog } from '@/hooks/use-flavor-catalog'
 import { sortFlavors } from '@/lib/flavor-catalog'
-import { CustomBaseSelector } from './custom-base-selector'
+import { FlavorPickerContent } from './flavor-picker-content'
 import { PickupScheduler } from './pickup-scheduler'
 import { StoreBaseNote } from './store-base-note'
 
@@ -106,7 +97,6 @@ export function OrderForm() {
   const { flavors, refreshFlavors } = useFlavorCatalog()
   const [selectedFlavor, setSelectedFlavor] = useState<Flavor | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const [selectedBases, setSelectedBases] = useState<Partial<Record<PortionType, string>>>({})
 
   const [selectedStore, setSelectedStore] = useState<string>('')
   const [cart, setCart] = useState<OrderItem[]>([])
@@ -432,7 +422,6 @@ export function OrderForm() {
                   if (storeId === selectedStore) return
                   setSelectedStore(storeId)
                   setCart([])
-                  setSelectedBases({})
                   setCustomerInfo(previous => ({ ...previous, pickupDate: '', pickupTime: '' }))
                   if (cart.length) toast.info('Al cambiar de tienda, elige de nuevo tus tartas disponibles')
                 }}
@@ -509,56 +498,33 @@ export function OrderForm() {
                       const cartCount = cart
                         .filter((item) => item.flavorId === flavor.id)
                         .reduce((sum, item) => sum + item.quantity, 0)
-                      const hasCustomBases = flavor.availability
-                        .find(availability => availability.storeId === selectedStore)?.portions
-                        .some(portion => getCustomBases(flavor, selectedStore, portion).length > 0)
 
                       return (
                         <button
                           key={flavor.id}
                           type="button"
+                          aria-haspopup="dialog"
                           onClick={() => {
                             setSelectedFlavor(flavor)
-                            setSelectedBases({})
                             setIsDrawerOpen(true)
                           }}
-                          className="group relative aspect-square overflow-hidden rounded-2xl bg-muted/30 transition-all duration-300 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
+                          className={cn(
+                            'group relative aspect-square min-w-0 cursor-pointer overflow-hidden rounded-2xl border bg-[#eeebe4] transition-colors duration-300 hover:border-[#b8ae9b] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#383836]/30 focus-visible:ring-offset-2',
+                            cartCount > 0 ? 'border-[#383836]' : 'border-transparent'
+                          )}
                         >
-                          {/* Image */}
                           <Image
                             src={getFlavorImageSrc(flavor, 'thumb')}
                             alt={flavor.name}
                             fill
-                            className="object-cover transition-transform duration-500 group-hover:scale-105"
+                            className="object-cover transition-transform duration-700 group-hover:scale-[1.02] motion-reduce:transform-none"
                             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 22vw"
                           />
-
-                          {/* Gradient overlay */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-
-                          {/* Content */}
+                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                           <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4">
-                            {hasCustomBases && <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/95 px-2 py-1 text-[9px] font-medium tracking-wide text-[#383836] sm:text-[10px]">
-                              <Cookie className="h-3 w-3" aria-hidden="true" /> Elige tu base
-                            </span>}
-                            <h3 className="text-sm font-medium text-white sm:text-base text-balance">
-                              {flavor.name}
-                            </h3>
+                            <h3 className="break-words text-balance text-sm font-medium text-white sm:text-base">{flavor.name}</h3>
                           </div>
-
-                          {/* Cart badge */}
-                          {cartCount > 0 && (
-                            <div className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background sm:h-7 sm:w-7">
-                              {cartCount}
-                            </div>
-                          )}
-
-                          {/* Hover indicator */}
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/20 group-hover:opacity-100">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-foreground shadow-lg backdrop-blur-sm">
-                              <Plus className="h-5 w-5" />
-                            </div>
-                          </div>
+                          {cartCount > 0 && <span aria-label={`${cartCount} en tu pedido`} className="absolute right-2 top-2 flex h-7 min-w-7 items-center justify-center rounded-full border border-white/80 bg-[#383836] px-1.5 text-xs font-semibold text-white shadow-sm">{cartCount}</span>}
                         </button>
                       )
                     })}
@@ -570,99 +536,16 @@ export function OrderForm() {
             {/* Drawer for portion selection */}
             <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
               <DrawerContent className="max-h-[90dvh] rounded-t-[28px] bg-[#f8f7f4] data-[vaul-drawer-direction=bottom]:max-h-[90dvh] data-[vaul-drawer-direction=bottom]:rounded-t-[28px]">
-                {selectedFlavor && (() => {
-                  const storeAvailability = selectedFlavor.availability.find(
-                    (a) => a.storeId === selectedStore
-                  )
-                  const availablePortions = storeAvailability?.portions || []
-
-                  return (
-                    <>
-                      <DrawerHeader className="shrink-0 border-b border-[#e8e5df] px-5 py-4 md:px-7">
-                        <div className="mx-auto flex w-full max-w-2xl items-center gap-4 text-left">
-                          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl">
-                            <Image src={getFlavorImageSrc(selectedFlavor, 'thumb')} alt={selectedFlavor.name} fill className="object-cover" sizes="80px" quality={78} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="mb-1 text-[9px] uppercase tracking-[0.2em] text-[#8b8377]">Tu próxima favorita</p>
-                            <DrawerTitle className="font-bebas text-3xl font-normal leading-none text-[#383836]">{selectedFlavor.name}</DrawerTitle>
-                            <DrawerDescription className="mt-2 line-clamp-2 text-xs leading-relaxed text-[#797166]">{selectedFlavor.description}</DrawerDescription>
-                          </div>
-                        </div>
-                      </DrawerHeader>
-
-                      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 md:px-7" data-vaul-no-drag="">
-                        <div className="mx-auto max-w-2xl space-y-4">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-[#797166]">Elige el tamaño y hazla tuya</p>
-                          {availablePortions.map((portion) => {
-                            const bases = getCustomBases(selectedFlavor, selectedStore, portion)
-                            const base = bases.find(option => option.id === selectedBases[portion])
-                            const inCart = cart.find(
-                              (item) =>
-                                item.flavorId === selectedFlavor.id &&
-                                item.portion === portion && (item.customBase?.id || '') === (base?.id || '')
-                            )
-                            const price = getFlavorPrice(selectedFlavor, portion, selectedStore) + (base?.surcharge || 0)
-
-                            return (
-                              <section key={portion} aria-label={`Formato ${PORTION_LABELS[portion]}`} className={cn(
-                                'space-y-4 rounded-[22px] border bg-white/70 p-4 transition-colors sm:p-5',
-                                inCart ? 'border-[#b7ae9d] shadow-[0_4px_18px_rgba(56,56,54,0.04)]' : 'border-[#e5e1d8]'
-                              )}>
-                                <div className="flex items-center justify-between gap-3">
-                                  <div className="flex flex-wrap items-center gap-2.5">
-                                    <h3 className="font-bebas text-2xl font-normal text-[#383836]">{PORTION_LABELS[portion]}</h3>
-                                    {(portion === 'mediana' || portion === 'grande') && <span className="inline-flex items-center gap-1.5 rounded-full bg-[#efede7] px-2.5 py-1 text-[10px] text-[#797166]">
-                                      <Users className="h-3 w-3" aria-hidden="true" /> {portion === 'mediana' ? '8 personas' : '14 personas'}
-                                    </span>}
-                                  </div>
-                                  {inCart && <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#383836] px-2 py-1 text-[9px] text-white"><Check className="h-3 w-3" /> En tu pedido</span>}
-                                </div>
-
-                                {bases.length > 0 && <CustomBaseSelector
-                                  options={bases}
-                                  value={selectedBases[portion] || ''}
-                                  portion={PORTION_LABELS[portion]}
-                                  onChange={value => setSelectedBases(previous => ({ ...previous, [portion]: value }))}
-                                />}
-
-                                <div className="flex items-end justify-between gap-3 border-t border-[#e8e5df] pt-4">
-                                  <div className="min-w-0">
-                                    <p className="mb-1 text-[9px] uppercase tracking-[0.12em] text-[#8b8377]">Precio por tarta</p>
-                                    <p className="text-xl font-semibold tabular-nums tracking-tight text-[#383836]">{price.toFixed(2)} €</p>
-                                    {base && <p className="mt-1 max-w-44 text-[10px] leading-relaxed text-[#797166]">Incluye +{base.surcharge.toFixed(2)} € de base personalizada</p>}
-                                  </div>
-                                  {inCart ? <div className="flex shrink-0 items-center gap-2 rounded-full border border-[#e5e1d8] bg-white p-1">
-                                    <button type="button" aria-label={`Quitar una tarta ${PORTION_LABELS[portion].toLowerCase()}`} onClick={() => updateQuantity(selectedFlavor.id, portion, -1, inCart.customBase)} className="flex h-10 w-10 items-center justify-center rounded-full text-[#383836] transition-colors hover:bg-[#f0ede7]">
-                                      <Minus className="h-4 w-4" />
-                                    </button>
-                                    <span className="w-5 text-center text-sm font-semibold tabular-nums text-[#383836]">{inCart.quantity}</span>
-                                    <button type="button" aria-label={`Añadir una tarta ${PORTION_LABELS[portion].toLowerCase()}`} onClick={() => updateQuantity(selectedFlavor.id, portion, 1, inCart.customBase)} className="flex h-10 w-10 items-center justify-center rounded-full bg-[#383836] text-white transition-colors hover:bg-[#4a4a46]">
-                                      <Plus className="h-4 w-4" />
-                                    </button>
-                                  </div> : <Button type="button" onClick={() => addToCart(selectedFlavor, portion, base)} className="min-h-11 shrink-0 gap-1.5 rounded-xl bg-[#383836] px-4 text-xs text-white hover:bg-[#4a4a46]">
-                                    <Plus className="h-3.5 w-3.5" /> Añadir al pedido
-                                  </Button>}
-                                </div>
-                              </section>
-                            )
-                          })}
-                        </div>
-                      </div>
-
-                      <DrawerFooter className="shrink-0 border-t border-[#e5e1d8] bg-white/95 px-5 py-3 backdrop-blur-xl md:px-7">
-                        {cart.length > 0 && <Button onClick={() => { setIsDrawerOpen(false); nextStep() }} className="mx-auto min-h-12 w-full max-w-2xl rounded-xl bg-[rgb(56,56,54)] text-sm text-white hover:bg-[rgba(56,56,54,0.88)]">
-                          Continuar · {total.toFixed(2)} € <ArrowRight className="ml-2 h-4 w-4" />
-                        </Button>}
-                        <DrawerClose asChild>
-                          <Button variant="outline" className="mx-auto min-h-10 w-full max-w-2xl rounded-xl border-[#e5e1d8] bg-white text-xs">
-                            Seguir eligiendo
-                          </Button>
-                        </DrawerClose>
-                      </DrawerFooter>
-                    </>
-                  )
-                })()}
+                {selectedFlavor && <FlavorPickerContent
+                  key={`${selectedStore}:${selectedFlavor.id}`}
+                  flavor={selectedFlavor}
+                  storeId={selectedStore}
+                  cart={cart}
+                  total={total}
+                  onAdd={(portion, base) => addToCart(selectedFlavor, portion, base)}
+                  onQuantity={(portion, delta, base) => updateQuantity(selectedFlavor.id, portion, delta, base)}
+                  onContinue={() => { setIsDrawerOpen(false); nextStep() }}
+                />}
               </DrawerContent>
             </Drawer>
           </div>

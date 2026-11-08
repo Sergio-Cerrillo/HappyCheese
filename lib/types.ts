@@ -56,8 +56,10 @@ export interface Flavor {
 export interface CustomBaseOption {
   id: string
   name: string
+  // Compatibilidad con bases anteriores: mismo suplemento en mediana y grande.
   surcharge: number
   storeIds: string[]
+  portionSettings?: Partial<Record<PortionType, { enabled: boolean; surcharge: number }>>
 }
 
 export interface OrderItem {

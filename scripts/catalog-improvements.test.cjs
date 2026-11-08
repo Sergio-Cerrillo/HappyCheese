@@ -54,7 +54,7 @@ test('La base original y dos bases diferentes tienen identidades independientes 
   assert.notEqual(pricing.getItemKey(custom), pricing.getItemKey({ ...custom, customBase: { id: 'otra' } }))
 })
 
-test('No se admiten suplementos para tamaños pequeños, otra tienda, bases inexistentes o desactivadas', () => {
+test('Las bases anteriores solo se ofrecen en mediana/grande y se rechazan otras tiendas u opciones desactivadas', () => {
   for (const [item, catalogue, store] of [
     [{ ...choice, portion: 'individual' }, [flavor], 'joan'],
     [choice, [flavor], 'lux'],
@@ -62,6 +62,90 @@ test('No se admiten suplementos para tamaños pequeños, otra tienda, bases inex
     [choice, [{ ...flavor, customBasesEnabled: false }], 'joan'],
     [choice, [{ ...flavor, active: false }], 'joan'],
   ]) assert.throws(() => pricing.priceOrderItems([item], catalogue, store))
+})
+
+const sizedBase = {
+  ...base, surcharge: 99,
+  portionSettings: {
+    individual: { enabled: true, surcharge: 0 },
+    doble: { enabled: false, surcharge: 1 },
+    mediana: { enabled: true, surcharge: 2 },
+    grande: { enabled: true, surcharge: 5.75 },
+  },
+}
+const sizedFlavor = {
+  ...flavor, customBases: [sizedBase],
+  prices: { individual: 7, doble: 12, mediana: 25, grande: 40 },
+  availability: [{ storeId: 'joan', portions: ['individual', 'doble', 'mediana', 'grande'] }],
+}
+
+test('Una misma base tiene suplementos por tamaño, incluido cero, sin usar el importe antiguo ni el del cliente', () => {
+  const items = pricing.priceOrderItems(['individual', 'mediana', 'grande'].map(portion => ({
+    ...choice, portion, quantity: portion === 'mediana' ? 2 : 1,
+  })), [sizedFlavor], 'joan')
+  assert.equal(items.map(item => item.price).join(','), '7,27,45.75')
+  assert.equal(items.map(item => item.customBase.surcharge).join(','), '0,2,5.75')
+  assert.equal(items.reduce((sum, item) => sum + item.quantity * item.price, 0), 106.75)
+  assert.equal(new Set(items.map(pricing.getItemKey)).size, 3)
+  assert.ok(pricing.getBaseDescription(items[2]).includes('+5.75 €/ud.'))
+})
+
+test('Desactivar un tamaño conserva su importe y bloquea el pedido sin volver al suplemento antiguo', () => {
+  assert.throws(() => pricing.priceOrderItems([{ ...choice, portion: 'doble' }], [sizedFlavor], 'joan'), /base seleccionada/)
+  assert.equal(sizedBase.portionSettings.doble.surcharge, 1)
+  const disabled = { ...sizedFlavor, customBases: [{ ...sizedBase, portionSettings: {} }] }
+  assert.equal(pricing.getCustomBases(disabled, 'joan', 'mediana').length, 0)
+  assert.throws(() => pricing.priceOrderItems([choice], [disabled], 'joan'), /base seleccionada/)
+  assert.equal(pricing.getCustomBases(sizedFlavor, 'lux', 'mediana').length, 0)
+  assert.equal(pricing.getCustomBases({ ...sizedFlavor, availability: [{ storeId: 'joan', portions: ['grande'] }] }, 'joan', 'mediana').length, 0)
+})
+
+test('Las bases antiguas mantienen su suplemento para mediana y grande hasta configurarlas por tamaño', () => {
+  assert.equal(pricing.getCustomBases(flavor, 'joan', 'mediana')[0].surcharge, 3.5)
+  assert.equal(pricing.getCustomBasePortionSettings(base).grande.surcharge, 3.5)
+  assert.equal(pricing.getCustomBasePortionSettings(base).individual, undefined)
+  assert.equal(base.portionSettings, undefined)
+})
+
+test('El esquema conserva los tamaños y valida sus interruptores, importes y nombres de formato', () => {
+  const { surcharge, ...newBase } = sizedBase
+  const result = validation.customBasesSchema.safeParse([newBase])
+  assert.equal(result.success, true)
+  assert.equal(result.data[0].surcharge, 0)
+  assert.equal(result.data[0].portionSettings.grande.surcharge, 5.75)
+  assert.equal(result.data[0].portionSettings.doble.enabled, false)
+  assert.equal(validation.customBasesSchema.safeParse([{ ...base, portionSettings: {} }]).success, true)
+  for (const portionSettings of [
+    { mediana: { enabled: true, surcharge: -1 } },
+    { mediana: { enabled: true, surcharge: 1.001 } },
+    { mediana: { enabled: true, surcharge: 1001 } },
+    { mediana: { enabled: 'sí', surcharge: 2 } },
+    { grande: { enabled: true } },
+    { desconocido: { enabled: true, surcharge: 2 } },
+  ]) assert.equal(validation.customBasesSchema.safeParse([{ ...base, portionSettings }]).success, false)
+})
+
+test('Crear y editar sabores conserva la configuración por tamaño y rechaza importes inválidos antes de escribir', async () => {
+  let written
+  let writes = 0
+  const api = load('app/api/flavors/route.ts', {
+    'next/server': { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } },
+    'next/headers': { cookies: async () => ({ get: () => ({ value: 'session' }) }) },
+    '@/lib/db': {
+      getSessionById: async () => ({}),
+      createFlavor: async data => { written = data; writes++; return { id: 'nuevo', ...data } },
+      updateFlavor: async (id, data) => { written = data; writes++; return { id, ...data } },
+    },
+    '@/lib/catalog-validation': validation,
+    '@/lib/flavor-catalog': load('lib/flavor-catalog.ts'),
+  })
+  const data = { name: 'Prueba', description: 'Tarta', prices: sizedFlavor.prices, availability: sizedFlavor.availability, customBasesEnabled: true, customBases: [sizedBase] }
+  assert.equal((await api.POST({ json: async () => data })).status, 200)
+  assert.equal(written.customBases[0].portionSettings.grande.surcharge, 5.75)
+  assert.equal((await api.PUT({ json: async () => ({ id: 'nuevo', ...data }) })).status, 200)
+  assert.equal(written.customBases[0].portionSettings.doble.enabled, false)
+  assert.equal((await api.PUT({ json: async () => ({ id: 'nuevo', customBases: [{ ...base, portionSettings: { mediana: { enabled: true, surcharge: -2 } } }] }) })).status, 400)
+  assert.equal(writes, 2)
 })
 
 test('Se conserva el precio específico por tienda y no se aceptan cantidades inválidas', () => {
@@ -263,6 +347,29 @@ test('El checkout guarda y cobra la base validada con la tienda e importe del se
   assert.equal(sessionOptions.line_items[0].price_data.unit_amount, 2850)
   assert.equal(sessionOptions.line_items[0].quantity, 2)
   assert.ok(sessionOptions.line_items[0].price_data.product_data.description.includes(base.name))
+})
+
+test('Stripe y el pedido reciben el suplemento del tamaño elegido, sin heredar el importe común', async () => {
+  let order
+  let sessionOptions
+  const api = load('app/api/checkout/route.ts', {
+    'next/server': { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } },
+    '@/lib/stripe': { formatAmountForStripe: value => Math.round(value * 100), stripe: { checkout: { sessions: { create: async options => { sessionOptions = options; return { id: 'cs_test', url: 'https://checkout.stripe.com/test' } } } } } },
+    '@/lib/db': {
+      getStoreById: async () => ({ id: 'joan', name: 'Joan Alcover', active: true }), getFlavors: async () => [sizedFlavor],
+      createOrder: async data => { order = { ...data, id: 'HC-test' }; return order },
+    },
+    '@/lib/supabase-admin': { default: { from: () => {
+      const query = { update() { return query }, eq() { return query }, select() { return query }, single: async () => ({ error: null }) }
+      return query
+    } } },
+    '@/lib/order-items': pricing, '@/lib/date-utils': { isValidPickupDate: () => true },
+  })
+  const data = { items: ['individual', 'mediana', 'grande'].map(portion => ({ ...choice, portion, quantity: 1 })), total: 79.75, storeId: 'joan', storeName: 'Joan Alcover', customerName: 'Test', customerEmail: 'test@example.com', customerPhone: '123456789', pickupDate: '2026-12-10', pickupTime: '12:00' }
+  assert.equal((await api.POST({ json: async () => data })).status, 200)
+  assert.equal(order.total, 79.75)
+  assert.equal(order.items.map(item => item.customBase.surcharge).join(','), '0,2,5.75')
+  assert.equal(sessionOptions.line_items.map(item => item.price_data.unit_amount).join(','), '700,2700,4575')
 })
 
 test('El aviso de 36 horas coincide con la validación incluso con ajustes antiguos de 34 horas', () => {
