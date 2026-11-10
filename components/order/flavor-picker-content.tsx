@@ -13,6 +13,12 @@ import { getFlavorImageSrc } from '@/lib/image-utils'
 import { cn } from '@/lib/utils'
 import type { CustomBaseOption, Flavor, OrderItem, PortionType } from '@/lib/types'
 
+const INCLUDED_BASE_NAMES: Record<string, string> = {
+  happycheese: 'Base de galleta María seleccionada',
+  'happycheese-lux': 'Base de crumble artesanal',
+  happycheese_lux: 'Base de crumble artesanal',
+}
+
 export function FlavorPickerContent({ flavor, storeId, cart, total, onAdd, onQuantity, onContinue }: {
   flavor: Flavor
   storeId: string
@@ -23,6 +29,7 @@ export function FlavorPickerContent({ flavor, storeId, cart, total, onAdd, onQua
   onContinue: () => void
 }) {
   const availability = flavor.availability.find(entry => entry.storeId === storeId)
+  const includedBaseName = INCLUDED_BASE_NAMES[storeId] || 'Base original'
   const portions = availability?.portions || []
   const prices = availability?.prices || flavor.prices
   const [selectedPortion, setSelectedPortion] = useState<PortionType | undefined>(portions[0])
@@ -63,7 +70,7 @@ export function FlavorPickerContent({ flavor, storeId, cart, total, onAdd, onQua
           </RadioGroup>
 
           <section aria-label={`Formato ${BASE_PORTION_LABELS[portion]}`} className="mt-3">
-            {bases.length > 0 ? <CustomBaseSelector options={bases} value={selectedBases[portion] || ''} portion={BASE_PORTION_LABELS[portion]} onChange={value => setSelectedBases(previous => ({ ...previous, [portion]: value }))} /> : <p className="flex min-h-7 items-center gap-2 text-[11px] text-[#938b7c]"><Cookie className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />Base original</p>}
+            {bases.length > 0 ? <CustomBaseSelector options={bases} value={selectedBases[portion] || ''} portion={BASE_PORTION_LABELS[portion]} includedBaseName={includedBaseName} onChange={value => setSelectedBases(previous => ({ ...previous, [portion]: value }))} /> : <p className="flex min-h-7 items-center gap-2 text-[11px] text-[#938b7c]"><Cookie className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden="true" />{includedBaseName}</p>}
             <div className="mt-3 flex min-h-14 items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="mb-1 text-[9px] uppercase tracking-[0.12em] text-[#8b8377]">{base ? 'Con base personalizada' : 'Precio por tarta'}</p>
