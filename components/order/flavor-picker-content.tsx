@@ -29,13 +29,15 @@ export function FlavorPickerContent({ flavor, storeId, cart, total, onAdd, onQua
   onContinue: () => void
 }) {
   const availability = flavor.availability.find(entry => entry.storeId === storeId)
-  const includedBaseName = INCLUDED_BASE_NAMES[storeId] || 'Base original'
   const portions = availability?.portions || []
   const prices = availability?.prices || flavor.prices
   const [selectedPortion, setSelectedPortion] = useState<PortionType | undefined>(portions[0])
   const [selectedBases, setSelectedBases] = useState<Partial<Record<PortionType, string>>>({})
   const portion = portions.find(option => option === selectedPortion) || portions[0]
   const bases = portion ? getCustomBases(flavor, storeId, portion) : []
+  const includedBaseName = storeId === 'happycheese' && bases.length > 0
+    ? 'Base de galleta María'
+    : INCLUDED_BASE_NAMES[storeId] || 'Base original'
   const base = bases.find(option => option.id === selectedBases[portion])
   const inCart = cart.find(item => item.flavorId === flavor.id && item.portion === portion && (item.customBase?.id || '') === (base?.id || ''))
   const price = portion ? prices[portion] + (base?.surcharge || 0) : 0
