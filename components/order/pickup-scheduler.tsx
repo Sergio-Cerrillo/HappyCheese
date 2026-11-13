@@ -51,17 +51,20 @@ function PickerPanel({ kind, open, onOpenChange, trigger, title, description, ch
   </Popover>
 }
 
-export function PickupScheduler({ store, date, time, onChange }: {
+export function PickupScheduler({ store, date, time, onChange, pickupWindow }: {
   store?: Store
   date: string
   time: string
   onChange: (date: string, time: string) => void
+  pickupWindow?: { startsOn: string | null; endsOn: string | null }
 }) {
   const [dateOpen, setDateOpen] = useState(false)
   const [timeOpen, setTimeOpen] = useState(false)
   const settings = getPickupSettings(store)
-  const minDate = formatDateForInput(getMinPickupDate(store))
-  const maxDate = formatDateForInput(getMaxPickupDate(store))
+  const storeMinDate = formatDateForInput(getMinPickupDate(store))
+  const storeMaxDate = formatDateForInput(getMaxPickupDate(store))
+  const minDate = pickupWindow?.startsOn && pickupWindow.startsOn > storeMinDate ? pickupWindow.startsOn : storeMinDate
+  const maxDate = pickupWindow?.endsOn && pickupWindow.endsOn < storeMaxDate ? pickupWindow.endsOn : storeMaxDate
   const selectedDay = date ? parseISO(date) : undefined
 
   function availableTimes(value: string) {
@@ -95,6 +98,11 @@ export function PickupScheduler({ store, date, time, onChange }: {
       <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e5dfd3] bg-[#f0ece3] px-2.5 py-1.5 text-[10px] text-[#797166]"><Clock3 className="h-3 w-3" aria-hidden="true" />Mínimo {settings.minNoticeHours} h de antelación</span>
     </div>
 
+    {(pickupWindow?.startsOn || pickupWindow?.endsOn) && <div className="mb-4 rounded-xl border border-[#ded4c1] bg-[#f1ebdf] px-4 py-3 text-xs leading-relaxed text-[#79613f]">
+      <p className="mb-1 text-[9px] font-medium uppercase tracking-[0.14em]">Recogida de tu selección exclusiva</p>
+      <p>{pickupWindow.startsOn && `Desde el ${format(parseISO(pickupWindow.startsOn), "d 'de' MMMM yyyy", { locale: es })}`}{pickupWindow.startsOn && pickupWindow.endsOn && ' hasta el '}{!pickupWindow.startsOn && pickupWindow.endsOn && 'Hasta el '}{pickupWindow.endsOn && format(parseISO(pickupWindow.endsOn), "d 'de' MMMM yyyy", { locale: es })}. El calendario muestra los días disponibles para todo tu pedido.</p>
+    </div>}
+
     <div className="grid grid-cols-2 gap-3 md:gap-4">
       <PickerPanel kind="date" open={dateOpen} onOpenChange={setDateOpen} title="Elige el día" description="Solo puedes seleccionar días con recogidas disponibles." trigger={
         <button type="button" disabled={!firstAvailableDay} aria-label={`Fecha de recogida: ${selectedDay ? format(selectedDay, 'EEEE d MMMM yyyy', { locale: es }) : 'elige el día'}`} className={cn(triggerClass, validDate ? 'border-[#b8ae9b]' : 'border-[#e5e1d8]')}>
@@ -103,7 +111,7 @@ export function PickupScheduler({ store, date, time, onChange }: {
           <span className="mt-2 flex w-full items-center justify-between gap-1 text-[10px] text-[#797166] md:text-xs"><span className={selectedDay ? 'capitalize' : undefined}>{selectedDay ? format(selectedDay, 'EEEE · yyyy', { locale: es }) : 'Ver calendario'}</span><ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform group-data-[state=open]:rotate-180" aria-hidden="true" /></span>
         </button>
       }>
-        <Calendar mode="single" required autoFocus locale={es} selected={selectedDay} defaultMonth={selectedDay || firstAvailableDay || parseISO(minDate)} startMonth={parseISO(minDate)} endMonth={parseISO(maxDate)} showOutsideDays={false}
+        <Calendar mode="single" required autoFocus locale={es} selected={selectedDay} defaultMonth={(validDate && selectedDay) || firstAvailableDay || parseISO(minDate)} startMonth={parseISO(minDate)} endMonth={parseISO(maxDate < minDate ? minDate : maxDate)} showOutsideDays={false}
           disabled={day => availableTimes(formatDateForInput(day)).length === 0}
           onSelect={day => {
             if (!day) return

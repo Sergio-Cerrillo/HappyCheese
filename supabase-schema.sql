@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS happycheese.flavors (
   "storeSortOrders" JSONB NOT NULL DEFAULT '{}'::jsonb,
   "customBasesEnabled" BOOLEAN NOT NULL DEFAULT false,
   "customBases" JSONB NOT NULL DEFAULT '[]'::jsonb,
+  "limitedEdition" JSONB,
   "createdAt" TIMESTAMPTZ DEFAULT now(),
   "updatedAt" TIMESTAMPTZ DEFAULT now()
 );

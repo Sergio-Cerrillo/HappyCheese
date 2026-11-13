@@ -6,6 +6,7 @@ import { getFlavorImageSrc } from '@/lib/image-utils'
 import { getCustomBases } from '@/lib/order-items'
 import type { Flavor, Store, PortionType } from '@/lib/types'
 import { FlavorBasesSummary } from './FlavorBasesSummary'
+import { getFlavorPickupPeriod, getFlavorSaleState } from '@/lib/flavor-sales'
 
 interface FlavorCardProps {
   flavor: Flavor
@@ -27,6 +28,7 @@ export function FlavorCard({
   onEdit,
   onDelete,
 }: FlavorCardProps) {
+  const sale = getFlavorSaleState(flavor)
   const hasAvailableBases = stores.some(store =>
     (flavor.availability.find(entry => entry.storeId === store.id)?.portions || [])
       .some(portion => getCustomBases(flavor, store.id, portion).length > 0)
@@ -160,6 +162,14 @@ export function FlavorCard({
           </div>
 
           <FlavorBasesSummary flavor={flavor} stores={stores} />
+          {flavor.limitedEdition?.enabled && <div className="mt-4 rounded-2xl border border-[#e2dbcd] bg-[#f8f6f1] px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-[#8c7e63]">Edición limitada</p>
+            <p className="mt-1 text-sm font-medium text-[#383836]">{sale.label}</p>
+            <p className="mt-1 text-xs leading-relaxed text-[#797166]">
+              {getFlavorPickupPeriod(flavor) && `${getFlavorPickupPeriod(flavor)}. `}
+              {flavor.inventory && `${flavor.inventory.sold} vendidas · ${flavor.inventory.reserved} en pago`}
+            </p>
+          </div>}
 
           {/* Disponibilidad y Precios por Tienda */}
           <div className="mt-5">

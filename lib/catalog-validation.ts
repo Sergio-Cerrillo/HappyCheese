@@ -1,5 +1,18 @@
 import { z } from 'zod'
 
+const saleDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
+  const date = new Date(`${value}T12:00:00Z`)
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value
+}, 'Fecha no válida').nullable().optional()
+
+export const limitedEditionSchema = z.object({
+  enabled: z.boolean(),
+  startsOn: saleDate,
+  endsOn: saleDate,
+  maxUnits: z.number().int().min(1).max(100000).nullable().optional(),
+}).refine(value => !value.startsOn || !value.endsOn || value.startsOn <= value.endsOn, 'La fecha final debe ser igual o posterior a la inicial')
+  .refine(value => !value.enabled || !!value.endsOn || !!value.maxUnits, 'Define una fecha final o un límite de unidades')
+
 const baseSurchargeSchema = z.number().finite().min(0).max(1000).refine(value => Math.abs(value * 100 - Math.round(value * 100)) < 0.00001, 'Usa como máximo dos decimales')
 const basePortionSchema = z.object({ enabled: z.boolean(), surcharge: baseSurchargeSchema }).strict()
 

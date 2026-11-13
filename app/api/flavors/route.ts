@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server'
 import { getFlavors, createFlavor, updateFlavor, deleteFlavor } from '@/lib/db'
 import { getSessionById } from '@/lib/db'
 import { cookies } from 'next/headers'
-import { customBasesSchema } from '@/lib/catalog-validation'
+import { customBasesSchema, limitedEditionSchema } from '@/lib/catalog-validation'
 import { sortFlavors } from '@/lib/flavor-catalog'
+import { refreshExpiredFlavorReservations } from '@/lib/flavor-inventory'
 
 async function checkAuth(): Promise<boolean> {
   const cookieStore = await cookies()
@@ -19,6 +20,9 @@ export async function GET(request: Request) {
     const storeId = searchParams.get('storeId')
     
     let flavors = await getFlavors()
+    if (flavors.some(flavor => flavor.limitedEdition?.enabled) && await refreshExpiredFlavorReservations()) {
+      flavors = await getFlavors()
+    }
     
     // Filtrar por tienda si se especifica
     if (storeId) {
@@ -55,6 +59,8 @@ export async function POST(request: Request) {
     }
     
     const data = await request.json()
+    const edition = limitedEditionSchema.safeParse(data.limitedEdition ?? { enabled: false })
+    if (!edition.success) return NextResponse.json({ error: edition.error.issues[0].message }, { status: 400 })
     const bases = customBasesSchema.safeParse(data.customBases || [])
     if (!bases.success || (data.customBasesEnabled && !bases.data.length)) {
       return NextResponse.json({ error: 'Revisa el nombre, tiendas y suplementos por tamaño de cada base' }, { status: 400 })
@@ -77,6 +83,7 @@ export async function POST(request: Request) {
       availability: data.availability || [],
       customBasesEnabled: data.customBasesEnabled === true,
       customBases: bases.data,
+      limitedEdition: edition.data,
     })
     
     return NextResponse.json(flavor)
@@ -100,6 +107,12 @@ export async function PUT(request: Request) {
     }
     
     const { id, ...updates } = await request.json()
+    delete updates.inventory
+    if ('limitedEdition' in updates) {
+      const edition = limitedEditionSchema.safeParse(updates.limitedEdition ?? { enabled: false })
+      if (!edition.success) return NextResponse.json({ error: edition.error.issues[0].message }, { status: 400 })
+      updates.limitedEdition = edition.data
+    }
     if ('sortOrder' in updates) delete updates.sortOrder
     if ('storeSortOrders' in updates) delete updates.storeSortOrders
     if ('customBasesEnabled' in updates && typeof updates.customBasesEnabled !== 'boolean') {
@@ -132,6 +145,9 @@ export async function PUT(request: Request) {
     return NextResponse.json(flavor)
   } catch (error) {
     console.error('Error updating flavor:', error)
+    if (error && typeof error === 'object' && 'message' in error && String(error.message).startsWith('LIMITED_EDITION:')) {
+      return NextResponse.json({ error: String(error.message).replace('LIMITED_EDITION: ', '') }, { status: 409 })
+    }
     return NextResponse.json(
       { error: 'Error al actualizar sabor' },
       { status: 500 }

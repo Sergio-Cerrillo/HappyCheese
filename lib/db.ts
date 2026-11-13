@@ -66,6 +66,17 @@ export async function deleteStore(id: string): Promise<boolean> {
 }
 
 // Flavors
+async function withFlavorInventory(flavors: Flavor[]): Promise<Flavor[]> {
+  const ids = flavors.filter(flavor => flavor.limitedEdition?.enabled).map(flavor => flavor.id)
+  if (!ids.length) return flavors
+  const { data, error } = await db.rpc('get_flavor_inventory', { flavor_ids: ids })
+  if (error) throw error
+  const inventory = new Map<string, NonNullable<Flavor['inventory']>>((data || []).map((row: { flavorId: string; sold: number; reserved: number; remaining: number | null }) => [row.flavorId, {
+    sold: Number(row.sold), reserved: Number(row.reserved), remaining: row.remaining === null ? null : Number(row.remaining),
+  }]))
+  return flavors.map(flavor => ({ ...flavor, inventory: inventory.get(flavor.id) }))
+}
+
 export async function getFlavors(): Promise<Flavor[]> {
   const { data, error } = await db
     .from('flavors')
@@ -76,7 +87,7 @@ export async function getFlavors(): Promise<Flavor[]> {
   if (error) throw error
   // Orden estable también durante la transición desde el esquema anterior,
   // donde sortOrder todavía no existe. Los nuevos sabores quedan al final.
-  return sortFlavors(data || [])
+  return withFlavorInventory(sortFlavors(data || []))
 }
 
 export async function getFlavorById(id: string): Promise<Flavor | undefined> {
@@ -87,7 +98,7 @@ export async function getFlavorById(id: string): Promise<Flavor | undefined> {
     .single()
   
   if (error) return undefined
-  return data
+  return (await withFlavorInventory([data]))[0]
 }
 
 export async function createFlavor(flavor: Omit<Flavor, 'id' | 'createdAt' | 'updatedAt'>): Promise<Flavor> {
@@ -104,7 +115,7 @@ export async function createFlavor(flavor: Omit<Flavor, 'id' | 'createdAt' | 'up
     .single()
   
   if (error) throw error
-  return data
+  return (await withFlavorInventory([data]))[0]
 }
 
 export async function updateFlavor(id: string, updates: Partial<Flavor>): Promise<Flavor | null> {
@@ -118,8 +129,11 @@ export async function updateFlavor(id: string, updates: Partial<Flavor>): Promis
     .select()
     .single()
   
-  if (error) return null
-  return data
+  if (error) {
+    if (error.message.startsWith('LIMITED_EDITION:')) throw error
+    return null
+  }
+  return (await withFlavorInventory([data]))[0]
 }
 
 export async function deleteFlavor(id: string): Promise<boolean> {

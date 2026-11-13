@@ -4,6 +4,8 @@ import { createOrder, getStoreById, getFlavors } from '@/lib/db'
 import { getBaseDescription, priceOrderItems } from '@/lib/order-items'
 import supabase from '@/lib/supabase-admin'
 import { getPickupValidationMessage, isValidPickupDate } from '@/lib/date-utils'
+import { getFlavorCartError, getFlavorPickupError } from '@/lib/flavor-sales'
+import { refreshExpiredFlavorReservations } from '@/lib/flavor-inventory'
 
 const PORTION_LABELS: Record<string, string> = {
   individual: 'Individual',
@@ -15,6 +17,7 @@ const PORTION_LABELS: Record<string, string> = {
 export async function POST(request: Request) {
   let orderId: string | undefined
   let sessionCreated = false
+  let limitedCheckout = false
   try {
     const data = await request.json()
 
@@ -63,7 +66,9 @@ export async function POST(request: Request) {
       )
     }
 
-    const flavors = await getFlavors()
+    let flavors = await getFlavors()
+    limitedCheckout = flavors.some(flavor => flavor.limitedEdition?.enabled && data.items.some((item: { flavorId: string }) => item?.flavorId === flavor.id))
+    if (limitedCheckout && await refreshExpiredFlavorReservations()) flavors = await getFlavors()
     let items
     try {
       items = priceOrderItems(data.items, flavors, store.id)
@@ -71,6 +76,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error instanceof Error ? error.message : 'Pedido no válido' }, { status: 400 })
     }
     const total = items.reduce((sum, item) => sum + Math.round(item.price * 100) * item.quantity, 0) / 100
+    for (const flavor of flavors.filter(flavor => items.some(item => item.flavorId === flavor.id))) {
+      const error = getFlavorCartError(flavor, items) || getFlavorPickupError(flavor, data.pickupDate)
+      if (error) return NextResponse.json({ error }, { status: 409 })
+    }
     if (!Number.isFinite(data.total) || Math.round(data.total * 100) !== Math.round(total * 100)) {
       return NextResponse.json({ error: 'El precio del pedido ha cambiado. Recarga los sabores y revisa tu pedido.' }, { status: 409 })
     }
@@ -115,6 +124,7 @@ export async function POST(request: Request) {
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
+      ...(limitedCheckout ? { expires_at: Math.floor(Date.now() / 1000) + 35 * 60 } : {}),
       payment_intent_data: { metadata: { orderId: order.id } },
       success_url: `${appUrl}/pedido/confirmacion?session_id={CHECKOUT_SESSION_ID}&order_id=${order.id}`,
       cancel_url: `${appUrl}/pedido?canceled=true`,
@@ -130,7 +140,7 @@ export async function POST(request: Request) {
       },
       billing_address_collection: 'auto',
       locale: 'es',
-    })
+    }, { idempotencyKey: `checkout-${order.id}` })
 
     sessionCreated = true
 
@@ -152,9 +162,14 @@ export async function POST(request: Request) {
     console.error('Error creating checkout session:', error)
     if (orderId && !sessionCreated) {
       const { error: cleanupError } = await supabase.from('orders').update({
-        status: 'cancelado', paymentStatus: 'failed', updatedAt: new Date().toISOString(),
+        // Una respuesta de red perdida puede ocultar una sesión creada. Mantener
+        // el pedido limitado recuperable hasta verificar su caducidad en Stripe.
+        status: limitedCheckout ? 'pendiente' : 'cancelado', paymentStatus: 'failed', updatedAt: new Date().toISOString(),
       }).eq('id', orderId).eq('paymentStatus', 'pending')
       if (cleanupError) console.error('Error marking failed checkout:', cleanupError)
+    }
+    if (error && typeof error === 'object' && 'message' in error && String(error.message).startsWith('LIMITED_EDITION:')) {
+      return NextResponse.json({ error: String(error.message).replace('LIMITED_EDITION: ', '') }, { status: 409 })
     }
     return NextResponse.json(
       { error: 'Error al crear sesión de pago' },

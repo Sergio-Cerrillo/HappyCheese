@@ -12,6 +12,7 @@ import { BASE_PORTION_LABELS, getCustomBases } from '@/lib/order-items'
 import { getFlavorImageSrc } from '@/lib/image-utils'
 import { cn } from '@/lib/utils'
 import type { CustomBaseOption, Flavor, OrderItem, PortionType } from '@/lib/types'
+import { getFlavorCartError, getFlavorPickupPeriod, getFlavorSaleState } from '@/lib/flavor-sales'
 
 const INCLUDED_BASE_NAMES: Record<string, string> = {
   happycheese: 'Base de galleta María seleccionada',
@@ -41,6 +42,9 @@ export function FlavorPickerContent({ flavor, storeId, cart, total, onAdd, onQua
   const base = bases.find(option => option.id === selectedBases[portion])
   const inCart = cart.find(item => item.flavorId === flavor.id && item.portion === portion && (item.customBase?.id || '') === (base?.id || ''))
   const price = portion ? prices[portion] + (base?.surcharge || 0) : 0
+  const sale = getFlavorSaleState(flavor)
+  const pickupPeriod = getFlavorPickupPeriod(flavor)
+  const cannotAdd = !!getFlavorCartError(flavor, cart, 1)
 
   return <>
     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-3 md:px-7 md:py-4" data-vaul-no-drag="">
@@ -51,6 +55,12 @@ export function FlavorPickerContent({ flavor, storeId, cart, total, onAdd, onQua
           </div>
           <DrawerTitle className="mx-auto mt-3 break-words font-serif text-[26px] font-normal leading-tight tracking-[-0.015em] text-[#383836] sm:text-[30px]">{flavor.name}</DrawerTitle>
           <DrawerDescription className="mx-auto mt-2 max-w-lg text-xs leading-relaxed text-[#797166]">{flavor.description}</DrawerDescription>
+          {pickupPeriod ? <div className="mx-auto mt-3 max-w-md rounded-2xl border border-[#ded4c1] bg-[#f1ece2] px-4 py-3 text-center">
+            <p className="text-[9px] font-medium uppercase tracking-[0.15em] text-[#95815d]">Una edición exclusiva</p>
+            <p className="mt-1.5 text-xs font-medium leading-relaxed text-[#62533b]">{pickupPeriod}</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-[#8b7d67]">Haz tu pedido ahora y elige tu día de recogida dentro de este período.</p>
+            {sale.remaining !== null && <p role="status" className="mt-2 text-[11px] font-medium text-[#79613f]">{sale.label}</p>}
+          </div> : sale.label && <div role="status" className="mx-auto mt-3 w-fit rounded-full border border-[#ded2bc] bg-[#f1eadc] px-3 py-1.5 text-[11px] font-medium text-[#79613f]">{sale.label}</div>}
         </DrawerHeader>
 
         {portion ? <div className="mt-4 border-t border-[#e5e1d8] pt-3">
@@ -81,8 +91,8 @@ export function FlavorPickerContent({ flavor, storeId, cart, total, onAdd, onQua
               {inCart ? <div className="flex shrink-0 items-center gap-2 rounded-full border border-[#e5e1d8] bg-white p-1">
                 <button type="button" aria-label={`Quitar una tarta ${BASE_PORTION_LABELS[portion].toLowerCase()}`} onClick={() => onQuantity(portion, -1, inCart.customBase)} className="flex h-10 w-10 items-center justify-center rounded-full text-[#383836] transition-colors hover:bg-[#f0ede7]"><Minus className="h-4 w-4" /></button>
                 <span className="w-5 text-center text-sm font-semibold tabular-nums text-[#383836]">{inCart.quantity}</span>
-                <button type="button" aria-label={`Añadir una tarta ${BASE_PORTION_LABELS[portion].toLowerCase()}`} onClick={() => onQuantity(portion, 1, inCart.customBase)} className="flex h-10 w-10 items-center justify-center rounded-full bg-[#383836] text-white transition-colors hover:bg-[#4a4a46]"><Plus className="h-4 w-4" /></button>
-              </div> : <Button type="button" onClick={() => onAdd(portion, base)} className="min-h-11 shrink-0 gap-1.5 rounded-xl bg-[#383836] px-4 text-xs text-white hover:bg-[#4a4a46]"><Plus className="h-3.5 w-3.5" />Añadir al pedido</Button>}
+                <button type="button" disabled={cannotAdd} aria-label={`Añadir una tarta ${BASE_PORTION_LABELS[portion].toLowerCase()}`} onClick={() => onQuantity(portion, 1, inCart.customBase)} className="flex h-10 w-10 items-center justify-center rounded-full bg-[#383836] text-white transition-colors hover:bg-[#4a4a46] disabled:cursor-not-allowed disabled:opacity-40"><Plus className="h-4 w-4" /></button>
+              </div> : <Button type="button" disabled={cannotAdd} onClick={() => onAdd(portion, base)} className="min-h-11 shrink-0 gap-1.5 rounded-xl bg-[#383836] px-4 text-xs text-white hover:bg-[#4a4a46]"><Plus className="h-3.5 w-3.5" />Añadir al pedido</Button>}
             </div>
           </section>
         </div> : <p className="py-6 text-center text-sm text-[#797166]">No hay tamaños disponibles para este sabor.</p>}

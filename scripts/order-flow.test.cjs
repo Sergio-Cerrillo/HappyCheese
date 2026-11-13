@@ -263,6 +263,8 @@ test('El checkout guarda un intento pendiente y marca el fallo si Stripe no crea
   let sessionOptions
   let failStripe = false
   const api = load('app/api/checkout/route.ts', {
+    '@/lib/flavor-sales': load('lib/flavor-sales.ts', {}),
+    '@/lib/flavor-inventory': { refreshExpiredFlavorReservations: async () => false },
     'next/server': { NextResponse: { json: (body, options) => ({ body, status: options?.status || 200 }) } },
     '@/lib/stripe': {
       formatAmountForStripe: (value) => Math.round(value * 100),

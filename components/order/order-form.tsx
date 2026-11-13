@@ -39,6 +39,7 @@ import { sortFlavors } from '@/lib/flavor-catalog'
 import { FlavorPickerContent } from './flavor-picker-content'
 import { PickupScheduler } from './pickup-scheduler'
 import { StoreBaseNote } from './store-base-note'
+import { getCartPickupWindow, getFlavorCartError, getFlavorPickupError, getFlavorSaleState } from '@/lib/flavor-sales'
 
 type Step = 'store' | 'flavors' | 'details' | 'confirm'
 
@@ -160,7 +161,23 @@ export function OrderForm() {
     return f.active && availability && availability.portions.length > 0
   }), selectedStore)
 
+  const pickupWindow = getCartPickupWindow(availableFlavors, cart)
+  const incompatiblePickupDates = pickupWindow.startsOn && pickupWindow.endsOn && pickupWindow.startsOn > pickupWindow.endsOn
+  const cartError = cart.map(item => {
+    const flavor = availableFlavors.find(flavor => flavor.id === item.flavorId)
+    return flavor ? getFlavorCartError(flavor, cart) : `${item.flavorName} ya no está disponible en esta tienda`
+  }).find(Boolean) || (incompatiblePickupDates ? 'Los sabores exclusivos de tu pedido no comparten días de recogida. Elige sabores con fechas compatibles' : null)
+  const pickupError = availableFlavors.filter(flavor => cart.some(item => item.flavorId === flavor.id))
+    .map(flavor => getFlavorPickupError(flavor, customerInfo.pickupDate)).find(Boolean)
+  const orderError = cartError || ((step === 'details' || step === 'confirm') && pickupError)
+
+  useEffect(() => {
+    setSelectedFlavor(previous => previous ? flavors.find(flavor => flavor.id === previous.id) || null : null)
+  }, [flavors])
+
   const addToCart = (flavor: Flavor, portion: PortionType, base?: CustomBaseOption) => {
+    const error = getFlavorCartError(flavor, cart, 1)
+    if (error) { toast.error(error); return }
     const price = Math.round((getFlavorPrice(flavor, portion, selectedStore) + (base?.surcharge || 0)) * 100) / 100
     const customBase = base ? { id: base.id, name: base.name, surcharge: base.surcharge } : undefined
     const key = getItemKey({ flavorId: flavor.id, portion, customBase })
@@ -173,6 +190,11 @@ export function OrderForm() {
   }
 
   const updateQuantity = (flavorId: string, portion: PortionType, delta: number, customBase?: OrderItem['customBase']) => {
+    if (delta > 0) {
+      const flavor = availableFlavors.find(flavor => flavor.id === flavorId)
+      const error = flavor ? getFlavorCartError(flavor, cart, delta) : 'Este sabor ya no está disponible'
+      if (error) { toast.error(error); return }
+    }
     const key = getItemKey({ flavorId, portion, customBase })
     setCart(previous => previous.map(item => getItemKey(item) === key ? { ...item, quantity: item.quantity + delta } : item).filter(item => item.quantity > 0))
   }
@@ -195,6 +217,8 @@ export function OrderForm() {
   }
 
   const canProceed = () => {
+    if (step !== 'store' && cartError) return false
+    if ((step === 'details' || step === 'confirm') && pickupError) return false
     switch (step) {
       case 'store':
         return selectedStore !== ''
@@ -325,6 +349,7 @@ export function OrderForm() {
         window.location.href = data.url
       } else {
         toast.error(data.error || 'Error al procesar el pedido')
+        if (response.status === 409) await refreshFlavors()
         setProcessing(false)
       }
     } catch (error) {
@@ -344,6 +369,11 @@ export function OrderForm() {
 
   return (
     <div className={cn('space-y-8', cart.length > 0 && step !== 'store' && 'pb-28')}>
+      {orderError && step !== 'store' && <div role="alert" className="rounded-2xl border border-[#ddc9aa] bg-[#faf5eb] px-5 py-4 text-sm text-[#79613f]">
+        <p>{orderError}. Revisa tu pedido.</p>
+        {cartError && step !== 'flavors' && <button type="button" className="mt-2 underline underline-offset-4" onClick={() => setStep('flavors')}>Volver a Sabores</button>}
+        {!cartError && step !== 'details' && <button type="button" className="mt-2 underline underline-offset-4" onClick={() => setStep('details')}>Cambiar la fecha de recogida</button>}
+      </div>}
       {step === 'store' && <OrderIntro />}
       <div ref={formTopRef} />
       {/* Progress */}
@@ -493,8 +523,10 @@ export function OrderForm() {
                     No hay sabores disponibles en esta tienda
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:gap-4">
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:gap-x-4 lg:gap-y-6">
                     {availableFlavors.map((flavor) => {
+                      const sale = getFlavorSaleState(flavor)
+                      const isTimedEdition = !!flavor.limitedEdition?.enabled && !!flavor.limitedEdition.endsOn
                       const cartCount = cart
                         .filter((item) => item.flavorId === flavor.id)
                         .reduce((sum, item) => sum + item.quantity, 0)
@@ -504,27 +536,41 @@ export function OrderForm() {
                           key={flavor.id}
                           type="button"
                           aria-haspopup="dialog"
+                          disabled={!sale.available}
                           onClick={() => {
                             setSelectedFlavor(flavor)
                             setIsDrawerOpen(true)
                           }}
                           className={cn(
-                            'group relative aspect-square min-w-0 cursor-pointer overflow-hidden rounded-2xl border bg-[#eeebe4] transition-colors duration-300 hover:border-[#b8ae9b] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#383836]/30 focus-visible:ring-offset-2',
-                            cartCount > 0 ? 'border-[#383836]' : 'border-transparent'
+                            'group relative isolate aspect-square min-w-0 cursor-pointer overflow-hidden rounded-2xl border bg-[#eeebe4] transition-colors duration-300 hover:border-[#b8ae9b] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#383836]/30 focus-visible:ring-offset-2 disabled:cursor-default disabled:opacity-65',
+                            isTimedEdition
+                              ? 'border-[#c1b297] hover:border-[#aa9779]'
+                              : 'border-transparent',
+                            cartCount > 0 && 'border-[#51463a] hover:border-[#51463a]'
                           )}
                         >
-                          <Image
-                            src={getFlavorImageSrc(flavor, 'thumb')}
-                            alt={flavor.name}
-                            fill
-                            className="object-cover transition-transform duration-700 group-hover:scale-[1.02] motion-reduce:transform-none"
-                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 22vw"
-                          />
-                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                          <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4">
-                            <h3 className="break-words text-balance text-sm font-medium text-white sm:text-base">{flavor.name}</h3>
+                          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[15px]">
+                            <Image
+                              src={getFlavorImageSrc(flavor, 'thumb')}
+                              alt={flavor.name}
+                              fill
+                              className="object-cover transition-transform duration-700 group-hover:scale-[1.02] motion-reduce:transform-none"
+                              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 22vw"
+                            />
+                            <div className={cn('absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent', isTimedEdition ? 'h-2/3 from-[#211a16]/85 via-[#211a16]/30' : 'h-full from-black/80 via-black/10')} />
                           </div>
-                          {cartCount > 0 && <span aria-label={`${cartCount} en tu pedido`} className="absolute right-2 top-2 flex h-7 min-w-7 items-center justify-center rounded-full border border-white/80 bg-[#383836] px-1.5 text-xs font-semibold text-white shadow-sm">{cartCount}</span>}
+                          {(isTimedEdition || cartCount > 0) && <div className="absolute inset-x-2 top-2 flex items-start justify-between gap-1.5 sm:inset-x-3 sm:top-3">
+                            {isTimedEdition && <span className="min-w-0 rounded-md bg-[#3b2f28]/95 px-1.5 py-1.5 text-left text-[9px] font-medium uppercase leading-tight tracking-[0.06em] text-[#eddfc6] sm:px-2 sm:text-[10px]">Edición limitada</span>}
+                            {cartCount > 0 && <span aria-label={`${cartCount} en tu pedido`} className="ml-auto flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full border border-[#d7cebd] bg-[#faf7ef] px-1 text-[11px] font-semibold tabular-nums text-[#51463a]">{cartCount}</span>}
+                          </div>}
+                          <div className={cn('absolute inset-x-0 bottom-0 p-3 sm:p-4', isTimedEdition && 'px-2 pb-2 sm:px-3 sm:pb-3')}>
+                            <h3 className={cn('text-sm font-medium text-white sm:text-base', isTimedEdition ? 'truncate' : 'break-words text-balance')}>{flavor.name}</h3>
+                            {sale.label && (!isTimedEdition || sale.remaining !== null || !sale.available) && <span className="mt-1 block text-[11px] font-normal leading-snug tabular-nums text-[#eee2cf] sm:text-xs">
+                              {sale.available && sale.remaining !== null
+                                ? `Solo ${sale.remaining} ${sale.remaining === 1 ? 'disponible' : 'disponibles'}`
+                                : sale.label}
+                            </span>}
+                          </div>
                         </button>
                       )
                     })}
@@ -678,6 +724,7 @@ export function OrderForm() {
               store={selectedStoreData}
               date={customerInfo.pickupDate}
               time={customerInfo.pickupTime}
+              pickupWindow={pickupWindow}
               onChange={(pickupDate, pickupTime) => setCustomerInfo(previous => ({ ...previous, pickupDate, pickupTime }))}
             />
 

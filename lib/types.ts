@@ -49,6 +49,15 @@ export interface Flavor {
   storeSortOrders?: Record<string, number>
   customBasesEnabled?: boolean
   customBases?: CustomBaseOption[]
+  limitedEdition?: {
+    enabled: boolean
+    // Intervalo de recogida, con ambos días incluidos. Permite comprar antes.
+    startsOn?: string | null
+    endsOn?: string | null
+    maxUnits?: number | null
+    id?: string
+  } | null
+  inventory?: { sold: number; reserved: number; remaining: number | null }
   createdAt: string
   updatedAt: string
 }

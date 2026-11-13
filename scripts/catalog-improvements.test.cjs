@@ -6,12 +6,17 @@ const vm = require('node:vm')
 const ts = require('typescript')
 
 function load(file, mocks = {}, env = {}) {
+  mocks = {
+    '@/lib/flavor-inventory': { refreshExpiredFlavorReservations: async () => false },
+    ...mocks,
+  }
   const source = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText
   const exports = {}
   vm.runInNewContext(source, {
     exports, URL, Response, require: name => {
+      if (name === '@/lib/flavor-sales' && !(name in mocks)) return load('lib/flavor-sales.ts')
       if (!(name in mocks)) throw new Error(`Unexpected dependency: ${name}`)
       return mocks[name]
     }, process: { env }, console: { error() {} },

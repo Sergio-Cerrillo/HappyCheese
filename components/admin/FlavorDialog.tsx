@@ -16,7 +16,8 @@ import { ImageUpload } from '@/components/ui/image-upload'
 import { AvailabilityEditor } from './availability-manager'
 import type { Flavor, Store, PortionType } from '@/lib/types'
 import { CustomBasesEditor } from './CustomBasesEditor'
-import { customBasesSchema } from '@/lib/catalog-validation'
+import { customBasesSchema, limitedEditionSchema } from '@/lib/catalog-validation'
+import { LimitedEditionEditor } from './LimitedEditionEditor'
 import { toast } from 'sonner'
 
 interface FlavorDialogProps {
@@ -69,6 +70,11 @@ export function FlavorDialog({
 
   const handleSave = async () => {
     if (isImageUploading) return
+    const edition = limitedEditionSchema.safeParse(formData.limitedEdition ?? { enabled: false })
+    if (!edition.success) {
+      toast.error(edition.error.issues[0].message)
+      return
+    }
     const bases = customBasesSchema.safeParse(formData.customBases || [])
     if (!bases.success || (formData.customBasesEnabled && !bases.data.length)) {
       toast.error('Añade al menos una base y revisa su nombre, tiendas y suplementos por tamaño')
@@ -303,6 +309,9 @@ export function FlavorDialog({
           />
 
           {/* Estado */}
+          <LimitedEditionEditor edition={formData.limitedEdition} inventory={flavor?.inventory}
+            onChange={limitedEdition => setFormData(previous => ({ ...previous, limitedEdition }))} />
+
           <section>
             <div
               className="

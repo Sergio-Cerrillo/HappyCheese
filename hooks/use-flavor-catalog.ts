@@ -42,5 +42,14 @@ export function useFlavorCatalog() {
     }
   }, [refreshFlavors])
 
+  const hasLimitedEditions = flavors.some(flavor => flavor.limitedEdition?.enabled)
+  useEffect(() => {
+    if (!hasLimitedEditions) return
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') refreshFlavors().catch(error => console.error('Error refreshing limited editions:', error))
+    }, 30_000)
+    return () => window.clearInterval(interval)
+  }, [hasLimitedEditions, refreshFlavors])
+
   return { flavors, refreshFlavors }
 }
